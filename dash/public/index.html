@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mambo SB · Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { font-family: 'Outfit', sans-serif; background: #06060a; color: #fff; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(circle at 15% 20%, rgba(129,140,248,0.18), transparent 45%), radial-gradient(circle at 85% 30%, rgba(168,85,247,0.14), transparent 45%), radial-gradient(circle at 50% 90%, rgba(56,189,248,0.1), transparent 50%), #06060a; animation: bgShift 20s ease-in-out infinite alternate; }
+  @keyframes bgShift { 0% { transform: scale(1); } 100% { transform: scale(1.15); } }
+  body::after { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35; background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMiIvPjwvc3ZnPg=='); }
+  .app { position: relative; z-index: 5; }
+  .hidden { display: none !important; }
+
+  .login-wrap { position: relative; z-index: 5; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+  .login-card { background: rgba(20,20,30,0.65); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 40px 32px; width: 100%; max-width: 400px; box-shadow: 0 25px 60px rgba(0,0,0,0.6); animation: rise 0.6s cubic-bezier(0.16,1,0.3,1) forwards; opacity: 0; transform: translateY(30px); }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+  .login-card h1 { font-size: 1.8rem; font-weight: 700; text-align: center; background: linear-gradient(135deg, #c4b5fd, #818cf8, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 6px; }
+  .login-card p { text-align: center; color: #8888aa; font-size: 0.85rem; margin-bottom: 28px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.72rem; font-weight: 600; color: #8888aa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+  .field input, .field select, .field textarea { width: 100%; padding: 13px 15px; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #fff; font-family: inherit; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,0.15); }
+  .field textarea { resize: vertical; min-height: 60px; }
+
+  .btn { padding: 13px 22px; border: none; border-radius: 12px; font-family: inherit; font-size: 0.88rem; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary { background: linear-gradient(135deg, #818cf8, #6366f1); color: #fff; box-shadow: 0 8px 30px rgba(99,102,241,0.4); width: 100%; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(99,102,241,0.6); }
+  .btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+  .btn-danger { background: rgba(255,60,60,0.12); border: 1px solid rgba(255,60,60,0.3); color: #ff6b6b; }
+  .btn-danger:hover { background: rgba(255,60,60,0.2); }
+  .btn-sm { padding: 9px 16px; font-size: 0.75rem; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .app-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(10,10,18,0.6); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 100; }
+  .app-header h1 { font-size: 1.35rem; font-weight: 700; background: linear-gradient(135deg, #c4b5fd, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .app-header .user-chip { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
+  .app-header .user-chip img { width: 28px; height: 28px; border-radius: 50%; }
+  .app-header .user-chip .meta { display: flex; flex-direction: column; }
+  .app-header .user-chip .meta .n { font-size: 0.82rem; font-weight: 600; }
+  .app-header .user-chip .meta .r { font-size: 0.65rem; color: #8888aa; text-transform: uppercase; letter-spacing: 1px; }
+
+  .role-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .role-owner { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+  .role-admin { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+  .role-user { background: rgba(129,140,248,0.12); color: #a5b4fc; border: 1px solid rgba(129,140,248,0.25); }
+
+  .layout { max-width: 1200px; margin: 0 auto; padding: 32px; }
+
+  .nav-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .nav-tab { padding: 11px 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #aaaacc; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+  .nav-tab:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .nav-tab.active { background: rgba(129,140,248,0.18); border-color: #818cf8; color: #e0e0ff; box-shadow: 0 0 20px rgba(129,140,248,0.25); }
+
+  .page { display: none; animation: fade 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .panel { background: rgba(20,20,30,0.55); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 24px; margin-bottom: 20px; }
+  .panel h2 { font-size: 0.78rem; color: #8888aa; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 700; }
+  .panel-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .stat-card { padding: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; }
+  .stat-card .lbl { font-size: 0.7rem; color: #8888aa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600; }
+  .stat-card .val { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  .stat-card .sub { font-size: 0.75rem; color: #6666aa; margin-top: 4px; }
+
+  .profile-card { display: flex; align-items: center; gap: 16px; }
+  .profile-card img { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #818cf8; }
+  .profile-card .info h3 { font-size: 1.15rem; font-weight: 600; }
+  .profile-card .info p { font-size: 0.8rem; color: #8888aa; margin-top: 2px; }
+
+  .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .preset { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
+  .preset:hover { background: rgba(129,140,248,0.12); border-color: rgba(129,140,248,0.4); transform: translateY(-3px); }
+  .preset.active { background: rgba(129,140,248,0.22); border-color: #818cf8; box-shadow: 0 0 18px rgba(129,140,248,0.35); }
+  .preset .emoji { font-size: 1.4rem; }
+  .preset .lbl { font-size: 0.75rem; font-weight: 600; color: #e0e0ff; text-align: center; }
+
+  .type-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .type-pill { padding: 9px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #aaaacc; font-family: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .type-pill:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .type-pill.active { background: rgba(129,140,248,0.22); border-color: #818cf8; color: #e0e0ff; }
+
+  .rpc-preview { display: flex; align-items: center; gap: 14px; padding: 16px; background: #0e0e15; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; }
+  .rpc-preview .icon { width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg,#818cf8,#6366f1); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; }
+  .rpc-preview .icon img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
+  .rpc-preview .meta { flex: 1; min-width: 0; }
+  .rpc-preview .meta .t1 { font-size: 0.68rem; color: #6666aa; text-transform: uppercase; letter-spacing: 1px; }
+  .rpc-preview .meta .t2 { font-size: 0.98rem; font-weight: 700; margin-top: 2px; }
+  .rpc-preview .meta .t3 { font-size: 0.8rem; color: #aaaacc; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rpc-preview .meta .t4 { font-size: 0.75rem; color: #6666aa; margin-top: 2px; }
+
+  .user-list { display: flex; flex-direction: column; gap: 10px; }
+  .user-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: all 0.2s; }
+  .user-item:hover { background: rgba(255,255,255,0.05); }
+  .user-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,0.6); flex-shrink: 0; }
+  .user-item .dot.off { background: #444; box-shadow: none; }
+  .user-item .info { flex: 1; min-width: 0; }
+  .user-item .info .name { font-weight: 600; font-size: 0.92rem; display: flex; align-items: center; gap: 8px; }
+  .user-item .info .meta { font-size: 0.72rem; color: #8888aa; margin-top: 2px; }
+  .user-item .actions { display: flex; gap: 6px; }
+
+  .cmd-category { margin-bottom: 24px; }
+  .cmd-category h3 { font-size: 0.85rem; color: #a5b4fc; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(129,140,248,0.15); }
+  .cmd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .cmd-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px 14px; }
+  .cmd-item:hover { background: rgba(129,140,248,0.08); border-color: rgba(129,140,248,0.25); }
+  .cmd-item .name { font-family: 'Courier New', monospace; font-weight: 700; color: #a5b4fc; font-size: 0.88rem; }
+  .cmd-item .usage { font-family: 'Courier New', monospace; font-size: 0.7rem; color: #6666aa; margin-top: 3px; }
+  .cmd-item .desc { font-size: 0.78rem; color: #ccc; margin-top: 5px; }
+
+  .search { width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #fff; font-family: inherit; font-size: 0.9rem; outline: none; margin-bottom: 20px; }
+  .search:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,0.15); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.single { grid-template-columns: 1fr; }
+  .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+  .toasts { position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  .toast { background: rgba(20,20,30,0.95); backdrop-filter: blur(20px); border: 1px solid; padding: 14px 20px; border-radius: 14px; font-weight: 600; font-size: 0.88rem; min-width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.35s cubic-bezier(0.16,1,0.3,1); pointer-events: auto; display: flex; align-items: center; gap: 10px; }
+  .toast.ok { border-color: rgba(74,222,128,0.4); color: #86efac; background: rgba(74,222,128,0.12); }
+  .toast.err { border-color: rgba(248,113,113,0.4); color: #fca5a5; background: rgba(248,113,113,0.12); }
+  .toast.info { border-color: rgba(129,140,248,0.4); color: #a5b4fc; background: rgba(129,140,248,0.12); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: translateX(0); } }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 9998; padding: 20px; }
+  .modal-bg.show { display: flex; }
+  .modal { background: rgba(20,20,30,0.96); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; box-shadow: 0 25px 60px rgba(0,0,0,0.7); animation: rise 0.3s ease; }
+  .modal h3 { font-size: 1.15rem; margin-bottom: 10px; }
+  .modal p { color: #aaaacc; font-size: 0.88rem; margin-bottom: 20px; line-height: 1.5; }
+  .modal .row { display: flex; gap: 10px; margin-top: 20px; }
+  .modal .row .btn { flex: 1; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .layout { padding: 20px 16px; }
+    .app-header { padding: 14px 16px; }
+    .app-header h1 { font-size: 1.1rem; }
+    .app-header .user-chip .meta { display: none; }
+    .form-row, .form-row.triple { grid-template-columns: 1fr; }
+    .nav-tabs { overflow-x: auto; flex-wrap: nowrap; }
+    .nav-tab { white-space: nowrap; }
+  }
+
+  @media (max-width: 900px) {
+    .rpc-picker-grid { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="login-view">
+  <div class="login-card">
+    <h1>Mambo SB</h1>
+    <p>Sign in to continue</p>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Username" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Password" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div class="app hidden" id="app-view">
+  <div class="app-header">
+    <h1>Mambo SB</h1>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="user-chip">
+        <img id="hdr-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png">
+        <div class="meta">
+          <span class="n" id="hdr-name">Loading...</span>
+          <span class="r" id="hdr-role">user</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="showPage('dashboard', this)">🏠 Dashboard</div>
+      <div class="nav-tab" onclick="showPage('rpc', this)">📡 RPC</div>
+      <div class="nav-tab" onclick="showPage('commands', this)">⌨️ Commands</div>
+      <div class="nav-tab" onclick="showPage('customstatus', this)">💬 Custom Status</div>
+      <div class="nav-tab" onclick="showPage('voice', this)">🎙️ Voice</div>
+      <div class="nav-tab admin-tab hidden" onclick="showPage('users', this)">👥 Users</div>
+    </div>
+
+    <div class="page active" id="page-dashboard">
+      <div class="grid" style="margin-bottom:20px;">
+        <div class="panel profile-card" style="margin:0;">
+          <img id="my-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png">
+          <div class="info">
+            <h3 id="my-name">Loading...</h3>
+            <p id="my-tag">@loading</p>
+            <div style="margin-top:8px;"><span class="role-badge role-user" id="my-role-badge">user</span></div>
+          </div>
+        </div>
+        <div class="panel" style="margin:0;">
+          <h2>Uptime</h2>
+          <div class="stat-card" style="border:none; padding:0; background:none;">
+            <div class="val" id="stat-uptime">--</div>
+            <div class="sub">since session start</div>
+          </div>
+        </div>
+        <div class="panel" style="margin:0;">
+          <h2>Commands Loaded</h2>
+          <div class="stat-card" style="border:none; padding:0; background:none;">
+            <div class="val" id="stat-cmds">0</div>
+            <div class="sub">across all cogs</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><h2>Current RPC</h2></div>
+        <div class="rpc-preview" id="dash-rpc-preview">
+          <div class="icon" id="dash-rpc-icon">🎵</div>
+          <div class="meta">
+            <div class="t1" id="dash-rpc-type">Playing</div>
+            <div class="t2" id="dash-rpc-name">Nothing</div>
+            <div class="t3" id="dash-rpc-details">—</div>
+            <div class="t4" id="dash-rpc-state">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-rpc">
+      <div class="panel">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;" class="rpc-picker-grid">
+          <div>
+            <div class="panel-title"><h2>Select App</h2></div>
+            <div class="preset-grid" id="preset-list"></div>
+          </div>
+          <div>
+            <div class="panel-title"><h2>Activity Type</h2></div>
+            <div class="type-pills" id="type-list" style="flex-direction:column;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h2>3 · Custom Fields</h2></div>
+        <div class="form-row">
+          <div class="field"><label>Name</label><input id="f-name" placeholder="Activity name"></div>
+          <div class="field"><label>Details</label><input id="f-details" placeholder="Line 2"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>State</label><input id="f-state" placeholder="Line 3"></div>
+          <div class="field"><label>Large Image URL</label><input id="f-image" placeholder="https://..."></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Button 1 Label</label><input id="f-b1l" placeholder="Join"></div>
+          <div class="field"><label>Button 1 URL</label><input id="f-b1u" placeholder="https://..."></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Button 2 Label</label><input id="f-b2l" placeholder="Website"></div>
+          <div class="field"><label>Button 2 URL</label><input id="f-b2u" placeholder="https://..."></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h2>Live Preview</h2></div>
+        <div class="rpc-preview">
+          <div class="icon" id="pv-icon">🎵</div>
+          <div class="meta">
+            <div class="t1" id="pv-type">Playing</div>
+            <div class="t2" id="pv-name">Nothing</div>
+            <div class="t3" id="pv-details">—</div>
+            <div class="t4" id="pv-state">—</div>
+          </div>
+        </div>
+      </div>
+            <div class="panel" id="rpc-plugins-panel" style="border-color: rgba(56,189,248,0.25);">
+        <div class="panel-title"><h2>Dynamic Plugins</h2></div>
+        <p style="color:#8888aa; font-size:0.85rem; margin-bottom:16px;">Drop these anywhere in your Name, Details, or State fields. The RPC re-renders every 15 seconds automatically.</p>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+          <div style="padding:14px; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.2); border-radius:12px;">
+            <div style="font-family:'Courier New', monospace; color:#7dd3fc; font-weight:700; font-size:0.9rem;">&lt;time:IST&gt;</div>
+            <div style="font-size:0.78rem; color:#ccc; margin-top:6px;">Live clock in any timezone. Try <code style="color:#7dd3fc;">UTC</code>, <code style="color:#7dd3fc;">IST</code>, <code style="color:#7dd3fc;">America/New_York</code></div>
+          </div>
+          <div style="padding:14px; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.2); border-radius:12px;">
+            <div style="font-family:'Courier New', monospace; color:#7dd3fc; font-weight:700; font-size:0.9rem;">&lt;date&gt;</div>
+            <div style="font-size:0.78rem; color:#ccc; margin-top:6px;">Today as YYYY-MM-DD. Use <code style="color:#7dd3fc;">&lt;date:DD/MM/YYYY&gt;</code> for a custom format.</div>
+          </div>
+          <div style="padding:14px; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.2); border-radius:12px;">
+            <div style="font-family:'Courier New', monospace; color:#7dd3fc; font-weight:700; font-size:0.9rem;">&lt;uptime&gt;</div>
+            <div style="font-size:0.78rem; color:#ccc; margin-top:6px;">Bot session uptime. Shows as <code style="color:#7dd3fc;">3h 42m</code> and increases every minute.</div>
+          </div>
+        </div>
+        <div style="margin-top:16px; padding:12px 14px; background:rgba(255,255,255,0.03); border-left:3px solid #7dd3fc; border-radius:6px; font-size:0.82rem; color:#aaaacc;">
+          <strong style="color:#e0e0ff;">Example:</strong> Set details to <code style="color:#7dd3fc; font-family:monospace;">&lt;time:IST&gt; · grinding ranked</code> → shows "<span style="color:#e0e0ff;">11:47 PM · grinding ranked</span>" and updates live.
+        </div>
+      </div>
+
+      <div class="panel" style="border-color: rgba(168,85,247,0.25);">
+        <div class="panel-title">
+          <h2>Stacking · Extra Cards</h2>
+          <button class="btn btn-ghost btn-sm" onclick="stackRefresh()">Refresh</button>
+        </div>
+        <p style="color:#8888aa; font-size:0.85rem; margin-bottom:16px;">Click an app to add it as an extra card. Pick a type on the right first if you want a specific one. Discord supports up to 3 stacked activities.</p>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;" class="rpc-picker-grid">
+          <div>
+            <div class="panel-title"><h2>Add App as Extra</h2></div>
+            <div class="preset-grid" id="stack-preset-grid"></div>
+          </div>
+          <div>
+            <div class="panel-title"><h2>Type for Extra</h2></div>
+            <div class="type-pills" id="stack-type-list" style="flex-direction:column;"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;">
+          <div class="panel-title"><h2 id="stack-fields-title">Extra Fields (apply to next add)</h2></div>
+          <div class="form-row">
+            <div class="field"><label>Name Override</label><input id="stack-f-name" placeholder="leave blank for default"></div>
+            <div class="field"><label>Details</label><input id="stack-f-details" placeholder="line 2"></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>State</label><input id="stack-f-state" placeholder="line 3"></div>
+            <div class="field"><label>Large Image URL</label><input id="stack-f-image" placeholder="https://..."></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Button 1 Label</label><input id="stack-f-b1l" placeholder="Join"></div>
+            <div class="field"><label>Button 1 URL</label><input id="stack-f-b1u" placeholder="https://..."></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Button 2 Label</label><input id="stack-f-b2l" placeholder="Website"></div>
+            <div class="field"><label>Button 2 URL</label><input id="stack-f-b2u" placeholder="https://..."></div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="stackFieldsClear()">Clear Fields</button>
+            <button class="btn btn-ghost btn-sm" onclick="stackFieldsSave()" id="stack-save-edit-btn" style="display:none;">Save Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="stackFieldsCancel()" id="stack-cancel-edit-btn" style="display:none;">Cancel Edit</button>
+          </div>
+          <p style="color:#6666aa; font-size:0.75rem; margin-top:10px;" id="stack-fields-hint">Fill any fields above, then click an app on the left to add it as an extra with those values.</p>
+        </div>
+
+        <div class="form-row" style="margin-top:20px;">
+          <div class="field">
+            <label>Set Primary App</label>
+            <select id="stack-primary-sel"></select>
+          </div>
+          <div class="field" style="display:flex; align-items:flex-end;">
+            <button class="btn btn-primary" style="width:100%;" onclick="stackSetPrimaryFromDropdown()">Set as Primary</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field"><label>Custom Status Emoji</label><input id="stack-status-emoji" placeholder="🎮"></div>
+          <div class="field"><label>Custom Status Text</label><input id="stack-status-text" placeholder="grinding"></div>
+        </div>
+        <button class="btn btn-ghost" style="width:auto;" onclick="stackSetStatus()">Set Custom Status</button>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1; min-width:160px;" onclick="stackStart()">Apply Stack</button>
+          <button class="btn btn-danger" onclick="stackStop()">Clear Activities</button>
+          <button class="btn btn-ghost" onclick="stackReset()">Reset Stack</button>
+        </div>
+                <div id="stack-view" style="margin-top:20px;"></div>
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <button class="btn btn-primary" style="flex:1; min-width:200px;" onclick="applyRPC()">Apply RPC</button>
+        <button class="btn btn-ghost" style="flex:1; min-width:180px;" onclick="stackSetPrimary()">Set as Stack Primary</button>
+        <button class="btn btn-danger" onclick="openClearModal()">Clear RPC</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-commands">
+      <input type="text" class="search" id="cmd-search" placeholder="Search commands..." oninput="filterCommands()">
+      <div id="cmd-list"></div>
+    </div>
+
+    
+    <div class="page" id="page-customstatus">
+      <div class="panel">
+        <div class="panel-title"><h2>Custom Status</h2></div>
+        <div class="form-row">
+          <div class="field"><label>Emoji</label><input id="cs-emoji" placeholder="🎮"></div>
+          <div class="field"><label>Text</label><input id="cs-text" placeholder="what are you doing?"></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="saveCustomStatus()">Apply Status</button>
+          <button class="btn btn-danger" onclick="clearCustomStatus()">Clear Status</button>
+        </div>
+      </div>
+
+      <div class="panel" style="border-color: rgba(168,85,247,0.25);">
+        <div class="panel-title">
+          <h2>Status Rotator</h2>
+          <button class="btn btn-ghost btn-sm" onclick="rotatorRefresh()">Refresh</button>
+        </div>
+        <p style="color:#8888aa; font-size:0.85rem; margin-bottom:16px;">Rotate your custom status through a list of entries on a timer.</p>
+        <div class="form-row">
+          <div class="field"><label>Emoji</label><input id="rot-emoji" placeholder="🎵"></div>
+          <div class="field"><label>Text</label><input id="rot-text" placeholder="vibing"></div>
+        </div>
+        <button class="btn btn-ghost" style="width:auto;" onclick="rotatorAdd()">Add Entry</button>
+
+        <div class="form-row" style="margin-top:20px;">
+          <div class="field"><label>Interval (seconds)</label><input id="rot-interval" type="number" min="5" placeholder="15"></div>
+          <div class="field" style="display:flex; align-items:flex-end;">
+            <button class="btn btn-primary" style="width:100%;" onclick="rotatorSetInterval()">Set Interval</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="rotatorStart()">Start Rotator</button>
+          <button class="btn btn-danger" onclick="rotatorStop()">Stop</button>
+          <button class="btn btn-ghost" onclick="rotatorClear()">Clear All</button>
+        </div>
+
+        <div id="rotator-view" style="margin-top:20px;"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-voice">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Voice Channel</h2>
+          <button class="btn btn-ghost btn-sm" onclick="voiceRefresh()">Refresh</button>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Guild</label>
+            <select id="voice-guild" onchange="loadChannels()"></select>
+          </div>
+          <div class="field">
+            <label>Channel</label>
+            <select id="voice-channel"></select>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="voiceJoin()">Join Voice</button>
+          <button class="btn btn-danger" onclick="voiceLeave()">Leave</button>
+        </div>
+        <div id="voice-status" style="margin-top:20px; color:#8888aa; font-size:0.85rem;">Not connected</div>
+      </div>
+    </div>
+
+    <div class="page" id="page-users">
+      <div class="panel">
+        <div class="panel-title"><h2>Add User</h2></div>
+        <div class="form-row triple">
+          <div class="field"><label>Username</label><input id="u-name" placeholder="username"></div>
+          <div class="field"><label>Password</label><input id="u-pass" type="password" placeholder="password"></div>
+          <div class="field"><label>Role</label><select id="u-role"><option value="user">User</option><option value="admin">Admin</option><option value="owner" class="owner-only hidden">Owner</option></select></div>
+        </div>
+        <div class="form-row single">
+          <div class="field"><label>Discord Token (optional — for hosting)</label><input id="u-token" placeholder="Discord token"></div>
+        </div>
+        <button class="btn btn-primary" style="width:auto;" onclick="addUser()">Add User</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><h2>All Users</h2><button class="btn btn-ghost btn-sm" onclick="loadUsers()">Refresh</button></div>
+        <div class="user-list" id="user-list"><p style="color:#6666aa; font-size:0.85rem;">Loading...</p></div>
+      </div>
+      <div class="panel admin-tab hidden" id="clients-panel">
+        <div class="panel-title"><h2>Connected Clients</h2><button class="btn btn-ghost btn-sm" onclick="loadClients()">Refresh</button></div>
+        <div class="user-list" id="client-list"><p style="color:#6666aa; font-size:0.85rem;">Loading...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<div class="modal-bg" id="clear-modal">
+  <div class="modal">
+    <h3>Clear all RPC?</h3>
+    <p>This wipes the current activity, details, state, buttons, and timer from your account. Custom status is kept.</p>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closeClearModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmClear()">Clear RPC</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal">
+    <h3 id="confirm-title">Confirm</h3>
+    <p id="confirm-text">Are you sure?</p>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let me = null;
+  let presets = [];
+  let types = ['PLAYING', 'STREAMING', 'LISTENING', 'WATCHING', 'COMPETING'];
+  let selectedPreset = null;
+  let selectedType = null;
+  let allCommands = {};
+  let confirmCallback = null;
+
+  function toast(msg, kind) {
+    kind = kind || 'ok';
+    const wrap = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = 'toast ' + kind;
+    const icon = kind === 'ok' ? '✓' : (kind === 'err' ? '✕' : 'ℹ');
+    el.innerHTML = '<span>' + icon + '</span><span>' + msg + '</span>';
+    wrap.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'all 0.3s';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(60px)';
+      setTimeout(() => el.remove(), 300);
+    }, 3400);
+  }
+
+  function openConfirm(title, text, cb) {
+    document.getElementById('confirm-title').innerText = title;
+    document.getElementById('confirm-text').innerText = text;
+    confirmCallback = cb;
+    document.getElementById('confirm-modal').classList.add('show');
+    document.getElementById('confirm-ok').onclick = () => {
+      document.getElementById('confirm-modal').classList.remove('show');
+      if (confirmCallback) confirmCallback();
+    };
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirm-modal').classList.remove('show');
+    confirmCallback = null;
+  }
+
+  function doLogin() {
+    const u = document.getElementById('login-user').value;
+    const p = document.getElementById('login-pass').value;
+    const btn = document.getElementById('login-btn');
+    if (!u || !p) return toast('Fill all fields', 'err');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in...';
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: u, pass: p })
+    })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      btn.innerHTML = 'Sign In';
+      if (d.success) {
+        toast('Welcome, ' + d.username, 'ok');
+        startApp();
+      } else {
+        toast(d.error || 'Invalid credentials', 'err');
+      }
+    })
+    .catch(e => {
+      btn.disabled = false;
+      btn.innerHTML = 'Sign In';
+      toast('Network error', 'err');
+    });
+  }
+
+  function doLogout() {
+    fetch('/api/logout', { method: 'POST' }).then(() => {
+      location.reload();
+    });
+  }
+
+  function startApp() {
+    document.getElementById('login-view').classList.add('hidden');
+    document.getElementById('app-view').classList.remove('hidden');
+    loadMe();
+    loadPresets();
+    renderTypes();
+    setupPreviewListeners();
+  }
+
+  function loadMe() {
+    fetch('/api/me')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        me = d;
+        const avatar = d.user.avatar;
+        const name = d.user.global_name || d.user.username;
+        document.getElementById('hdr-avatar').src = avatar;
+        document.getElementById('hdr-name').innerText = name;
+        document.getElementById('hdr-role').innerText = d.role;
+        document.getElementById('my-avatar').src = avatar;
+        document.getElementById('my-name').innerText = name;
+        document.getElementById('my-tag').innerText = '@' + d.user.username;
+        const roleBadge = document.getElementById('my-role-badge');
+        roleBadge.className = 'role-badge role-' + d.role;
+        roleBadge.innerText = d.role;
+
+        const sec = d.uptime;
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        document.getElementById('stat-uptime').innerText = h + 'h ' + m + 'm ' + s + 's';
+        document.getElementById('stat-cmds').innerText = d.cmds || 0;
+
+        const r = d.rpc || {};
+        document.getElementById('dash-rpc-type').innerText = r.type || 'Playing';
+        document.getElementById('dash-rpc-name').innerText = r.name || 'Nothing';
+        document.getElementById('dash-rpc-details').innerText = r.details || '—';
+        document.getElementById('dash-rpc-state').innerText = r.state || '—';
+
+        if (d.role === 'owner' || d.role === 'admin') {
+          document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('hidden'));
+        }
+        if (d.role === 'owner') {
+          document.querySelectorAll('.owner-only').forEach(el => el.classList.remove('hidden'));
+        }
+
+        document.getElementById('f-name').value = r.name || '';
+        document.getElementById('f-details').value = r.details || '';
+        document.getElementById('f-state').value = r.state || '';
+        document.getElementById('f-image').value = r.largeImage || '';
+        if (r.button1Label) document.getElementById('f-b1l').value = r.button1Label;
+        if (r.button1URL) document.getElementById('f-b1u').value = r.button1URL;
+        if (r.button2Label) document.getElementById('f-b2l').value = r.button2Label;
+        if (r.button2URL) document.getElementById('f-b2u').value = r.button2URL;
+        updatePreview();
+      });
+  }
+
+  function loadPresets() {
+    fetch('/api/rpc/presets')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        presets = d.presets;
+        const emojis = { spotify: '🎵', youtube: '▶️', twitch: '🟣', netflix: '🎬', crunchyroll: '🍥', disney: '🏰', prime: '📺', hulu: '🟢', valorant: '🎯', minecraft: '⛏️', genshin: '⚔️', league: '🛡️', roblox: '🎮', xbox: '🎮', playstation: '🎮', steam: '🎮', coding: '💻', metaquest: '🥽' };
+        document.getElementById('preset-list').innerHTML = presets.map(p =>
+          '<div class="preset" data-key="' + p.key + '" onclick="selectPreset(\'' + p.key + '\')">' +
+            '<div class="emoji">' + (emojis[p.key] || '✨') + '</div>' +
+            '<div class="lbl">' + p.name + '</div>' +
+          '</div>'
+        ).join('');
+      });
+  }
+
+  function renderTypes() {
+    document.getElementById('type-list').innerHTML = types.map(t =>
+      '<div class="type-pill" data-type="' + t + '" onclick="selectType(\'' + t + '\')">' + t + '</div>'
+    ).join('');
+  }
+
+  function selectPreset(key) {
+    selectedPreset = presets.find(p => p.key === key);
+    document.querySelectorAll('.preset').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+    if (selectedPreset) {
+      if (!selectedType) {
+        selectedType = selectedPreset.type;
+        document.querySelectorAll('.type-pill').forEach(el => el.classList.toggle('active', el.dataset.type === selectedType));
+      }
+      if (selectedPreset.name !== 'Custom') document.getElementById('f-name').value = selectedPreset.name;
+      updatePreview();
+    }
+  }
+
+  function selectType(t) {
+    selectedType = t;
+    document.querySelectorAll('.type-pill').forEach(el => el.classList.toggle('active', el.dataset.type === t));
+    updatePreview();
+  }
+
+  function setupPreviewListeners() {
+    ['f-name', 'f-details', 'f-state', 'f-image'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updatePreview);
+    });
+  }
+
+  function updatePreview() {
+    const name = document.getElementById('f-name').value || 'Nothing';
+    const details = document.getElementById('f-details').value || '—';
+    const state = document.getElementById('f-state').value || '—';
+    const type = selectedType || 'Playing';
+    document.getElementById('pv-type').innerText = type.charAt(0) + type.slice(1).toLowerCase();
+    document.getElementById('pv-name').innerText = name;
+    document.getElementById('pv-details').innerText = details;
+    document.getElementById('pv-state').innerText = state;
+    const icon = document.getElementById('pv-icon');
+    const imgUrl = document.getElementById('f-image').value;
+    if (imgUrl) {
+      icon.innerHTML = '<img src="' + imgUrl + '" onerror="this.parentNode.innerHTML=\'🎵\'">';
+    } else {
+      icon.innerHTML = '🎵';
+    }
+  }
+
+  function applyRPC() {
+    if (!selectedPreset) return toast('Pick an app first', 'err');
+    if (!selectedType) return toast('Pick an activity type', 'err');
+    const body = {
+      appKey: selectedPreset.key,
+      appId: selectedPreset.appId,
+      type: selectedType,
+      name: document.getElementById('f-name').value,
+      details: document.getElementById('f-details').value,
+      state: document.getElementById('f-state').value,
+      largeImage: document.getElementById('f-image').value,
+      button1Label: document.getElementById('f-b1l').value,
+      button1URL: document.getElementById('f-b1u').value,
+      button2Label: document.getElementById('f-b2l').value,
+      button2URL: document.getElementById('f-b2u').value
+    };
+    fetch('/api/rpc/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('RPC applied · ' + selectedPreset.name, 'ok');
+        loadMe();
+      } else {
+        toast(d.error || 'Failed', 'err');
+      }
+    })
+    .catch(e => toast('Network error', 'err'));
+  }
+
+  function openClearModal() {
+    document.getElementById('clear-modal').classList.add('show');
+  }
+
+  function closeClearModal() {
+    document.getElementById('clear-modal').classList.remove('show');
+  }
+
+  function confirmClear() {
+    closeClearModal();
+    fetch('/api/rpc/clear', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          toast('RPC cleared', 'ok');
+          ['f-name', 'f-details', 'f-state', 'f-image', 'f-b1l', 'f-b1u', 'f-b2l', 'f-b2u'].forEach(id => document.getElementById(id).value = '');
+          selectedPreset = null;
+          selectedType = null;
+          document.querySelectorAll('.preset, .type-pill').forEach(el => el.classList.remove('active'));
+          updatePreview();
+          loadMe();
+        } else {
+          toast(d.error || 'Failed', 'err');
+        }
+      });
+  }
+
+  function loadCommands() {
+    fetch('/api/commands')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        allCommands = d.commands;
+        renderCommands();
+      });
+  }
+
+  function renderCommands(filter) {
+    filter = (filter || '').toLowerCase();
+    const container = document.getElementById('cmd-list');
+    const cats = Object.keys(allCommands).sort();
+    let html = '';
+    for (const cat of cats) {
+      const cmds = allCommands[cat].filter(c =>
+        !filter || c.name.toLowerCase().includes(filter) || (c.description || '').toLowerCase().includes(filter)
+      );
+      if (!cmds.length) continue;
+      html += '<div class="cmd-category"><h3>' + cat + ' · ' + cmds.length + '</h3><div class="cmd-grid">';
+      for (const c of cmds) {
+        html += '<div class="cmd-item">' +
+          '<div class="name">$' + c.name + '</div>' +
+          (c.usage ? '<div class="usage">' + c.usage + '</div>' : '') +
+          '<div class="desc">' + (c.description || '—') + '</div>' +
+        '</div>';
+      }
+      html += '</div></div>';
+    }
+    container.innerHTML = html || '<p style="color:#6666aa;">No commands found</p>';
+  }
+
+  function filterCommands() {
+    renderCommands(document.getElementById('cmd-search').value);
+  }
+
+  function loadUsers() {
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const list = document.getElementById('user-list');
+        if (!d.users.length) {
+          list.innerHTML = '<p style="color:#6666aa; font-size:0.85rem;">No users yet</p>';
+          return;
+        }
+        list.innerHTML = d.users.map(u =>
+          '<div class="user-item">' +
+            '<div class="dot ' + (u.online ? '' : 'off') + '"></div>' +
+            '<div class="info">' +
+              '<div class="name">' + u.username + ' <span class="role-badge role-' + u.role + '">' + u.role + '</span></div>' +
+              '<div class="meta">' + (u.tag || 'offline') + ' · created ' + new Date(u.created).toISOString().slice(0, 10) + '</div>' +
+            '</div>' +
+            '<div class="actions">' +
+              (me && me.role === 'owner' ? '<button class="btn btn-ghost btn-sm" onclick="promoteUser(\'' + u.id + '\', \'' + u.role + '\')">Change Role</button>' : '') +
+              (me && me.role === 'owner' && u.role !== 'owner' ? '<button class="btn btn-danger btn-sm" onclick="removeUser(\'' + u.id + '\', \'' + u.username + '\')">Remove</button>' : '') +
+            '</div>' +
+          '</div>'
+        ).join('');
+      });
+  }
+
+  function addUser() {
+    const username = document.getElementById('u-name').value.trim();
+    const password = document.getElementById('u-pass').value;
+    const role = document.getElementById('u-role').value;
+    const token = document.getElementById('u-token').value.trim();
+    if (!username || !password) return toast('Fill username and password', 'err');
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role, token })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('User ' + username + ' added', 'ok');
+        document.getElementById('u-name').value = '';
+        document.getElementById('u-pass').value = '';
+        document.getElementById('u-token').value = '';
+        loadUsers();
+      } else {
+        toast(d.error || 'Failed', 'err');
+      }
+    });
+  }
+
+  function removeUser(id, name) {
+    openConfirm('Remove user?', 'Delete ' + name + '? This will disconnect their client if online.', () => {
+      fetch('/api/users/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            toast('User removed', 'ok');
+            loadUsers();
+          } else {
+            toast(d.error || 'Failed', 'err');
+          }
+        });
+    });
+  }
+
+  function promoteUser(id, currentRole) {
+    const order = ['user', 'admin', 'owner'];
+    const next = order[(order.indexOf(currentRole) + 1) % order.length];
+    openConfirm('Change role?', 'Set ' + id.slice(0, 6) + ' from ' + currentRole + ' to ' + next + '?', () => {
+      fetch('/api/users/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: next })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          toast('Role updated to ' + next, 'ok');
+          loadUsers();
+        } else {
+          toast(d.error || 'Failed', 'err');
+        }
+      });
+    });
+  }
+
+  function loadClients() {
+    fetch('/api/clients')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const list = document.getElementById('client-list');
+        list.innerHTML = d.clients.map(c =>
+          '<div class="user-item">' +
+            '<div class="dot ' + (c.online ? '' : 'off') + '"></div>' +
+            '<div class="info">' +
+              '<div class="name">' + (c.tag || c.dashUser || 'unknown') + ' <span class="role-badge role-' + (c.role || 'user') + '">' + (c.role || 'user') + '</span></div>' +
+              '<div class="meta">' + (c.id || c.uid) + '</div>' +
+            '</div>' +
+          '</div>'
+        ).join('');
+      });
+  }
+
+  let currentStack = { primary: null, extras: [], secondary: null, enabled: false };
+
+  function loadStack() {
+    fetch('/api/rpc/stack')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        currentStack = d.stack || { primary: null, extras: [], secondary: null, enabled: false };
+        renderStack();
+        renderStackDropdown();
+      });
+  }
+
+  const PRESET_EMOJIS = { spotify: '🎵', youtube: '▶️', twitch: '🟣', netflix: '🎬', crunchyroll: '🍥', disney: '🏰', prime: '📺', hulu: '🟢', valorant: '🎯', minecraft: '⛏️', genshin: '⚔️', league: '🛡️', roblox: '🎮', xbox: '🎮', playstation: '🎮', steam: '🎮', coding: '💻', metaquest: '🥽' };
+
+  let stackSelectedType = null;
+  let stackEditingIndex = null;
+
+  
+
+  function renderStackDropdown() {
+    const box = document.getElementById('stack-preset-grid');
+    if (box && presets.length) {
+      box.innerHTML = presets.map(p =>
+        '<div class="preset" onclick="stackQuickAdd(\'' + p.key + '\', this)">' +
+          '<div class="emoji">' + (PRESET_EMOJIS[p.key] || '✨') + '</div>' +
+          '<div class="lbl">' + p.name + '</div>' +
+        '</div>'
+      ).join('');
+    }
+
+    const typeBox = document.getElementById('stack-type-list');
+    if (typeBox) {
+      typeBox.innerHTML = types.map(t =>
+        '<div class="type-pill" data-type="' + t + '" onclick="stackPickType(\'' + t + '\')">' + t + '</div>'
+      ).join('');
+    }
+
+    const primarySel = document.getElementById('stack-primary-sel');
+    if (primarySel && presets.length) {
+      primarySel.innerHTML = presets.map(p => '<option value="' + p.key + '">' + p.name + '</option>').join('');
+    }
+  }
+
+  function stackPickType(t) {
+    stackSelectedType = t;
+    document.querySelectorAll('#stack-type-list .type-pill').forEach(el => el.classList.toggle('active', el.dataset.type === t));
+  }
+
+  function stackFieldsSnapshot() {
+    return {
+      nameOverride: document.getElementById('stack-f-name').value.trim(),
+      details: document.getElementById('stack-f-details').value,
+      state: document.getElementById('stack-f-state').value,
+      largeImage: document.getElementById('stack-f-image').value,
+      button1Label: document.getElementById('stack-f-b1l').value,
+      button1URL: document.getElementById('stack-f-b1u').value,
+      button2Label: document.getElementById('stack-f-b2l').value,
+      button2URL: document.getElementById('stack-f-b2u').value
+    };
+  }
+
+  function stackFieldsClear() {
+    ['stack-f-name', 'stack-f-details', 'stack-f-state', 'stack-f-image', 'stack-f-b1l', 'stack-f-b1u', 'stack-f-b2l', 'stack-f-b2u'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  function stackFieldsCancel() {
+    stackEditingIndex = null;
+    stackFieldsClear();
+    document.getElementById('stack-fields-title').innerText = 'Extra Fields (apply to next add)';
+    document.getElementById('stack-fields-hint').innerText = 'Fill any fields above, then click an app on the left to add it as an extra with those values.';
+    document.getElementById('stack-save-edit-btn').style.display = 'none';
+    document.getElementById('stack-cancel-edit-btn').style.display = 'none';
+  }
+
+  function stackFieldsSave() {
+    if (stackEditingIndex === null) return;
+    const fields = stackFieldsSnapshot();
+    fetch('/api/rpc/stack/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index: stackEditingIndex, fields })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('Extra updated', 'ok');
+        stackFieldsCancel();
+        loadStack();
+      } else toast(d.error || 'Failed', 'err');
+    });
+  }
+
+  function stackEditExtra(index) {
+    const extras = (currentStack.extras || []);
+    const e = extras[index - 1];
+    if (!e) return;
+    stackEditingIndex = index;
+    document.getElementById('stack-f-name').value = e.nameOverride || '';
+    document.getElementById('stack-f-details').value = e.details || '';
+    document.getElementById('stack-f-state').value = e.state || '';
+    document.getElementById('stack-f-image').value = e.largeImage || '';
+    document.getElementById('stack-f-b1l').value = e.button1Label || '';
+    document.getElementById('stack-f-b1u').value = e.button1URL || '';
+    document.getElementById('stack-f-b2l').value = e.button2Label || '';
+    document.getElementById('stack-f-b2u').value = e.button2URL || '';
+    document.getElementById('stack-fields-title').innerText = 'Editing Extra #' + index + ' · ' + e.name;
+    document.getElementById('stack-fields-hint').innerText = 'Modify the fields and click Save Edit. Or Cancel to go back.';
+    document.getElementById('stack-save-edit-btn').style.display = 'inline-flex';
+    document.getElementById('stack-cancel-edit-btn').style.display = 'inline-flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function stackQuickAdd(key, el) {
+    if (el) {
+      el.classList.add('active');
+      setTimeout(() => el.classList.remove('active'), 400);
+    }
+    const body = { preset: key };
+    if (stackSelectedType) body.type = stackSelectedType;
+    const fields = stackFieldsSnapshot();
+    Object.assign(body, fields);
+    fetch('/api/rpc/stack/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('Added to stack', 'ok');
+        stackFieldsClear();
+        loadStack();
+      } else toast(d.error, 'err');
+    });
+  }
+
+  function stackSetPrimaryFromDropdown() {
+    const key = document.getElementById('stack-primary-sel').value;
+    if (!key) return toast('Pick an app', 'err');
+    const body = { preset: key };
+    if (stackSelectedType) body.type = stackSelectedType;
+    fetch('/api/rpc/stack/primary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Primary set', 'ok'); loadStack(); } else toast(d.error, 'err'); });
+  }
+
+  function renderStack() {
+    const box = document.getElementById('stack-view');
+    if (!box) return;
+    const s = currentStack;
+    const extras = s.extras || [];
+    let html = '';
+
+    html += '<div style="padding:12px; border:1px solid ' + (s.enabled ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.06)') + '; background:' + (s.enabled ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.02)') + '; border-radius:12px; margin-bottom:12px; font-size:0.85rem; color:' + (s.enabled ? '#86efac' : '#8888aa') + ';">';
+    html += s.enabled ? '● Stack live' : '○ Stack idle';
+    html += '</div>';
+
+    // Primary card
+    html += '<div style="padding:14px; background:rgba(129,140,248,0.08); border:1px solid rgba(129,140,248,0.25); border-radius:12px; margin-bottom:10px; display:flex; align-items:center; gap:12px;">';
+    html += '<div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#818cf8,#6366f1); display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0;">' + (s.primary ? (PRESET_EMOJIS[s.primary.key] || '✨') : '—') + '</div>';
+    html += '<div style="flex:1; min-width:0;">';
+    html += '<div style="font-size:0.65rem; color:#6666aa; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px;">Primary</div>';
+    if (s.primary) {
+      html += '<div style="font-weight:700; font-size:0.95rem;">' + s.primary.name + ' <span style="color:#6666aa; font-weight:500; font-size:0.78rem;">· ' + s.primary.type + '</span></div>';
+    } else {
+      html += '<div style="color:#6666aa; font-size:0.85rem;">None set</div>';
+    }
+    html += '</div></div>';
+
+    // Extras
+    html += '<div style="padding:14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; margin-bottom:10px;">';
+    html += '<div style="font-size:0.65rem; color:#6666aa; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Extras · ' + extras.length + ' / 3</div>';
+    if (!extras.length) {
+      html += '<div style="color:#6666aa; font-size:0.85rem;">No extras added</div>';
+    } else {
+      html += extras.map((e, i) =>
+        '<div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">' +
+          '<div style="width:32px; height:32px; border-radius:8px; background:rgba(129,140,248,0.12); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0;">' + (PRESET_EMOJIS[e.key] || '✨') + '</div>' +
+          '<div style="flex:1; min-width:0;">' +
+            '<div style="font-weight:600; font-size:0.9rem;">' + e.name + ' <span style="color:#6666aa; font-weight:500; font-size:0.75rem;">· ' + e.type + '</span></div>' +
+            (e.details ? '<div style="font-size:0.72rem; color:#8888aa; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + e.details + (e.state ? ' · ' + e.state : '') + '</div>' : '') +
+          '</div>' +
+          '<button class="btn btn-ghost btn-sm" onclick="stackEditExtra(' + (i + 1) + ')" style="padding:6px 12px; font-size:0.7rem;">Edit</button>' +
+          '<button class="btn btn-danger btn-sm" onclick="stackRemove(' + (i + 1) + ')" style="padding:6px 12px; font-size:0.7rem;">Remove</button>' +
+        '</div>'
+      ).join('');
+    }
+    html += '</div>';
+
+    // Custom status
+    if (s.secondary && s.secondary.text) {
+      html += '<div style="padding:14px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); border-radius:12px; display:flex; align-items:center; gap:12px;">';
+      html += '<div style="width:32px; height:32px; border-radius:8px; background:rgba(251,191,36,0.15); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0;">' + (s.secondary.emoji || '💬') + '</div>';
+      html += '<div style="flex:1;"><div style="font-size:0.65rem; color:#6666aa; text-transform:uppercase; letter-spacing:1px;">Custom Status</div>';
+      html += '<div style="font-weight:600; margin-top:2px;">' + s.secondary.text + '</div></div>';
+      html += '</div>';
+    }
+
+    box.innerHTML = html;
+  }
+
+  function stackSetPrimary() {
+    if (!selectedPreset) return toast('Pick a preset in section 1', 'err');
+    fetch('/api/rpc/stack/primary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preset: selectedPreset.key, type: selectedType, details: document.getElementById('f-details').value, state: document.getElementById('f-state').value })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Primary set', 'ok'); loadStack(); } else toast(d.error, 'err'); });
+  }
+
+  function stackAdd() {
+    const key = document.getElementById('stack-preset-sel').value;
+    if (!key) return toast('Select an extra', 'err');
+    fetch('/api/rpc/stack/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preset: key })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Added to stack', 'ok'); loadStack(); } else toast(d.error, 'err'); });
+  }
+
+  function stackRemove(index) {
+    fetch('/api/rpc/stack/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) loadStack(); });
+  }
+
+  function stackSetStatus() {
+    const emoji = document.getElementById('stack-status-emoji').value;
+    const text = document.getElementById('stack-status-text').value;
+    fetch('/api/rpc/stack/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emoji, text })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Status set', 'ok'); loadStack(); } });
+  }
+
+  function stackStart() {
+    fetch('/api/rpc/stack/start', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.success) { toast('Stack applied', 'ok'); loadStack(); } else toast(d.error, 'err'); });
+  }
+
+  function stackStop() {
+    fetch('/api/rpc/stack/stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.success) { toast('Stack cleared', 'ok'); loadStack(); } });
+  }
+
+  function stackReset() {
+    openConfirm('Reset stack?', 'This clears the entire stack configuration.', () => {
+      fetch('/api/rpc/stack/clear', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.success) { toast('Stack reset', 'ok'); loadStack(); } });
+    });
+  }
+
+  function stackRefresh() { loadStack(); }
+
+  let currentRotator = { interval: 15, entries: [], enabled: false };
+
+  function saveCustomStatus() {
+    const emoji = document.getElementById('cs-emoji').value;
+    const text = document.getElementById('cs-text').value;
+    if (!emoji && !text) return toast('Fill at least one field', 'err');
+    fetch('/api/customstatus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emoji, text })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) toast('Custom status applied', 'ok'); else toast(d.error, 'err'); });
+  }
+
+  function clearCustomStatus() {
+    openConfirm('Clear status?', 'Removes your custom status from Discord.', () => {
+      fetch('/api/customstatus/clear', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            toast('Cleared', 'ok');
+            document.getElementById('cs-emoji').value = '';
+            document.getElementById('cs-text').value = '';
+          }
+        });
+    });
+  }
+
+  function loadCustomStatus() {
+    fetch('/api/customstatus')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        document.getElementById('cs-emoji').value = d.status.emoji || '';
+        document.getElementById('cs-text').value = d.status.text || '';
+      });
+    rotatorRefresh();
+  }
+
+  function rotatorRefresh() {
+    fetch('/api/rotator')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        currentRotator = d.rotator;
+        document.getElementById('rot-interval').value = currentRotator.interval || 15;
+        renderRotator();
+      });
+  }
+
+  function renderRotator() {
+    const box = document.getElementById('rotator-view');
+    if (!box) return;
+    const r = currentRotator;
+    const entries = r.entries || [];
+    let html = '';
+    html += '<div style="padding:12px; border:1px solid ' + (r.enabled ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.06)') + '; background:' + (r.enabled ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.02)') + '; border-radius:12px; margin-bottom:12px; font-size:0.85rem; color:' + (r.enabled ? '#86efac' : '#8888aa') + ';">';
+    html += r.enabled ? '● Rotator running · every ' + r.interval + 's' : '○ Rotator idle';
+    html += '</div>';
+    html += '<div style="font-size:0.65rem; color:#6666aa; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Entries · ' + entries.length + '</div>';
+    if (!entries.length) {
+      html += '<div style="color:#6666aa; font-size:0.85rem;">No entries</div>';
+    } else {
+      html += entries.map((e, i) =>
+        '<div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04);">' +
+          '<div style="font-family:monospace; color:#6666aa; font-size:0.72rem; width:24px;">#' + (i + 1) + '</div>' +
+          '<div style="font-size:1.1rem; width:32px; text-align:center;">' + e.emoji + '</div>' +
+          '<div style="flex:1;">' + (e.text || '—') + '</div>' +
+          '<button class="btn btn-danger btn-sm" onclick="rotatorRemove(' + (i + 1) + ')" style="padding:6px 12px; font-size:0.7rem;">Remove</button>' +
+        '</div>'
+      ).join('');
+    }
+    box.innerHTML = html;
+  }
+
+  function rotatorAdd() {
+    const emoji = document.getElementById('rot-emoji').value;
+    const text = document.getElementById('rot-text').value;
+    if (!emoji) return toast('Emoji required', 'err');
+    fetch('/api/rotator/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emoji, text })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('Entry added', 'ok');
+        document.getElementById('rot-emoji').value = '';
+        document.getElementById('rot-text').value = '';
+        rotatorRefresh();
+      } else toast(d.error, 'err');
+    });
+  }
+
+  function rotatorRemove(index) {
+    fetch('/api/rotator/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) rotatorRefresh(); });
+  }
+
+  function rotatorSetInterval() {
+    const interval = parseInt(document.getElementById('rot-interval').value, 10) || 15;
+    fetch('/api/rotator/interval', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ interval })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Interval set to ' + d.interval + 's', 'ok'); rotatorRefresh(); } });
+  }
+
+  function rotatorStart() {
+    fetch('/api/rotator/start', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.success) { toast('Rotator started', 'ok'); rotatorRefresh(); } else toast(d.error, 'err'); });
+  }
+
+  function rotatorStop() {
+    fetch('/api/rotator/stop', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.success) { toast('Rotator stopped', 'ok'); rotatorRefresh(); } });
+  }
+
+  function rotatorClear() {
+    openConfirm('Clear all entries?', 'This removes every rotator entry.', () => {
+      fetch('/api/rotator/clear', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.success) { toast('Cleared', 'ok'); rotatorRefresh(); } });
+    });
+  }
+
+  function voiceRefresh() {
+    fetch('/api/voice/status')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const el = document.getElementById('voice-status');
+        if (d.connected) {
+          el.innerHTML = '<span style="color:#86efac;">● Connected</span> · guild ' + d.guildId + ' · channel ' + d.channelId;
+        } else {
+          el.innerHTML = '<span style="color:#8888aa;">○ Not connected</span>';
+        }
+      });
+    fetch('/api/voice/guilds')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const sel = document.getElementById('voice-guild');
+        const cur = sel.value;
+        sel.innerHTML = d.guilds.map(g => '<option value="' + g.id + '">' + g.name + '</option>').join('');
+        if (cur) sel.value = cur;
+        if (d.guilds.length) loadChannels();
+      });
+  }
+
+  function loadChannels() {
+    const guildId = document.getElementById('voice-guild').value;
+    if (!guildId) return;
+    fetch('/api/voice/channels/' + guildId)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const sel = document.getElementById('voice-channel');
+        sel.innerHTML = d.channels.length
+          ? d.channels.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('')
+          : '<option value="">No voice channels</option>';
+      });
+  }
+
+  function voiceJoin() {
+    const guildId = document.getElementById('voice-guild').value;
+    const channelId = document.getElementById('voice-channel').value;
+    if (!guildId || !channelId) return toast('Select guild and channel', 'err');
+    fetch('/api/voice/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId, channelId })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Joined voice', 'ok'); setTimeout(voiceRefresh, 1500); } else toast(d.error, 'err'); });
+  }
+
+  function voiceLeave() {
+    fetch('/api/voice/leave', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.success) { toast('Left voice', 'ok'); setTimeout(voiceRefresh, 1000); } });
+  }
+
+  function showPage(name, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    if (name === 'commands' && !Object.keys(allCommands).length) loadCommands();
+    if (name === 'rpc') loadStack();
+    if (name === 'users') { loadUsers(); if (me && (me.role === 'owner' || me.role === 'admin')) loadClients(); }
+    if (name === 'customstatus') loadCustomStatus();
+    if (name === 'voice') voiceRefresh();
+  }
+
+  document.getElementById('login-pass').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+</script>
+</body>
+</html>

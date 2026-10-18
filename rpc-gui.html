@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPC Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Outfit', sans-serif; background: #06060a; color: #fff; min-height: 100vh; padding: 32px; background: radial-gradient(circle at 20% 30%, rgba(120,80,255,0.15), transparent 45%), radial-gradient(circle at 80% 70%, rgba(0,200,255,0.08), transparent 45%), #06060a; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #c4b5fd, #818cf8, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+  .sub { color: #8888aa; font-size: 0.9rem; margin-bottom: 32px; }
+  .section { background: rgba(20,20,30,0.55); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 24px; margin-bottom: 20px; }
+  .section h2 { font-size: 0.8rem; color: #8888aa; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 700; }
+  .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+  .app { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
+  .app:hover { background: rgba(129,140,248,0.12); border-color: rgba(129,140,248,0.4); transform: translateY(-3px); }
+  .app.active { background: rgba(129,140,248,0.2); border-color: #818cf8; box-shadow: 0 0 20px rgba(129,140,248,0.35); }
+  .app img { width: 42px; height: 42px; object-fit: contain; }
+  .app span { font-size: 0.78rem; font-weight: 600; color: #e0e0ff; text-align: center; }
+  .app .badge { font-size: 0.6rem; color: #6666aa; letter-spacing: 0.5px; text-transform: uppercase; }
+  .types { display: flex; gap: 8px; flex-wrap: wrap; }
+  .type { padding: 10px 18px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #aaaacc; font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .type:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .type.active { background: rgba(129,140,248,0.22); border-color: #818cf8; color: #e0e0ff; box-shadow: 0 0 14px rgba(129,140,248,0.3); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .row.full { grid-template-columns: 1fr; }
+  label { display: block; font-size: 0.75rem; color: #8888aa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600; }
+  input, textarea { width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-family: inherit; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+  input:focus, textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,0.15); }
+  textarea { resize: vertical; min-height: 60px; }
+  .actions { display: flex; gap: 12px; margin-top: 24px; }
+  .btn { padding: 14px 24px; border: none; border-radius: 12px; font-family: inherit; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: linear-gradient(135deg, #818cf8, #6366f1); color: #fff; box-shadow: 0 8px 30px rgba(99,102,241,0.4); flex: 1; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(99,102,241,0.6); }
+  .btn-danger { background: transparent; border: 1px solid rgba(255,60,60,0.3); color: #ff6b6b; }
+  .btn-danger:hover { background: rgba(255,60,60,0.1); }
+  .preview { display: flex; align-items: center; gap: 14px; padding: 14px; background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; margin-top: 12px; }
+  .preview img { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: rgba(255,255,255,0.04); }
+  .preview .meta { flex: 1; }
+  .preview .meta .t1 { font-size: 0.7rem; color: #8888aa; text-transform: uppercase; letter-spacing: 1px; }
+  .preview .meta .t2 { font-size: 1rem; font-weight: 700; margin-top: 2px; }
+  .preview .meta .t3 { font-size: 0.8rem; color: #aaaacc; margin-top: 4px; }
+  .preview .meta .t4 { font-size: 0.78rem; color: #6666aa; margin-top: 2px; }
+  .toast-wrap { position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+  .toast { background: rgba(20,20,30,0.95); backdrop-filter: blur(20px); border: 1px solid; padding: 14px 20px; border-radius: 14px; font-weight: 600; font-size: 0.88rem; min-width: 240px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.35s cubic-bezier(0.16,1,0.3,1); }
+  .toast.ok { border-color: #4ade80; color: #86efac; background: rgba(74,222,128,0.12); }
+  .toast.err { border-color: #f87171; color: #fca5a5; background: rgba(248,113,113,0.12); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 9998; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: rgba(20,20,30,0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; max-width: 400px; width: 90%; box-shadow: 0 25px 60px rgba(0,0,0,0.7); }
+  .modal h3 { font-size: 1.2rem; margin-bottom: 12px; }
+  .modal p { color: #aaaacc; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions .btn { flex: 1; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RPC Studio</h1>
+  <p class="sub">Pick an app, choose its activity type, fill custom fields, apply.</p>
+
+  <div class="section">
+    <h2>1 · Select App</h2>
+    <div class="apps" id="apps"></div>
+  </div>
+
+  <div class="section">
+    <h2>2 · Activity Type</h2>
+    <div class="types" id="types"></div>
+  </div>
+
+  <div class="section">
+    <h2>3 · Custom Fields</h2>
+    <div class="row">
+      <div>
+        <label>Name (only for custom app)</label>
+        <input id="f-name" placeholder="e.g. My Activity">
+      </div>
+      <div>
+        <label>Details</label>
+        <input id="f-details" placeholder="line 2">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>State</label>
+        <input id="f-state" placeholder="line 3">
+      </div>
+      <div>
+        <label>Custom Large Image URL (optional)</label>
+        <input id="f-image" placeholder="https://...">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Button 1 Label</label>
+        <input id="f-b1l" placeholder="Join">
+      </div>
+      <div>
+        <label>Button 1 URL</label>
+        <input id="f-b1u" placeholder="https://...">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Button 2 Label</label>
+        <input id="f-b2l" placeholder="Website">
+      </div>
+      <div>
+        <label>Button 2 URL</label>
+        <input id="f-b2u" placeholder="https://...">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Live Preview</h2>
+    <div class="preview">
+      <img id="pv-img" src="https://cdn.discordapp.com/embed/avatars/0.png" onerror="this.style.opacity=0.3">
+      <div class="meta">
+        <div class="t1" id="pv-type">Playing</div>
+        <div class="t2" id="pv-name">Nothing</div>
+        <div class="t3" id="pv-details">—</div>
+        <div class="t4" id="pv-state">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="applyRPC()">Apply RPC</button>
+    <button class="btn btn-danger" onclick="showClear()">Clear RPC</button>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<div class="modal-overlay" id="clear-modal">
+  <div class="modal">
+    <h3>Clear all RPC?</h3>
+    <p>This wipes every activity, custom text, button, and image from all connected accounts. Custom status stays.</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="hideClear()">Cancel</button>
+      <button class="btn btn-primary" onclick="doClear()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let APPS = [];
+  let TYPES = [];
+  let selectedApp = null;
+  let selectedType = null;
+
+  function toast(msg, type) {
+    type = type || 'ok';
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerText = msg;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'all 0.3s'; setTimeout(() => el.remove(), 300); }, 3200);
+  }
+
+  async function loadApps() {
+    const r = await fetch('/api/rpc/apps');
+    const d = await r.json();
+    APPS = d.apps;
+    TYPES = d.types;
+    renderApps();
+    renderTypes();
+  }
+
+  function renderApps() {
+    const box = document.getElementById('apps');
+    box.innerHTML = APPS.map(a => `
+      <div class="app" data-key="${a.key}" onclick="pickApp('${a.key}')">
+        ${a.image ? `<img src="${a.image}" onerror="this.style.display='none'">` : `<div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#818cf8,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">✨</div>`}
+        <span>${a.name}</span>
+        <div class="badge">${a.type}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderTypes() {
+    const box = document.getElementById('types');
+    box.innerHTML = TYPES.map(t => `<div class="type" data-type="${t}" onclick="pickType('${t}')">${t}</div>`).join('');
+  }
+
+  function pickApp(key) {
+    selectedApp = APPS.find(a => a.key === key);
+    document.querySelectorAll('.app').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+    if (selectedApp) {
+      if (!selectedType) selectedType = selectedApp.type;
+      document.getElementById('f-name').value = selectedApp.key === 'custom' ? '' : selectedApp.name;
+      updatePreview();
+    }
+  }
+
+  function pickType(t) {
+    selectedType = t;
+    document.querySelectorAll('.type').forEach(el => el.classList.toggle('active', el.dataset.type === t));
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const app = selectedApp;
+    const name = app ? (app.key === 'custom' ? (document.getElementById('f-name').value || 'Custom Activity') : app.name) : 'Nothing';
+    const details = document.getElementById('f-details').value || '—';
+    const state = document.getElementById('f-state').value || '—';
+    const customImage = document.getElementById('f-image').value;
+    const img = customImage || (app && app.image) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+    document.getElementById('pv-img').src = img;
+    document.getElementById('pv-type').innerText = selectedType || 'Playing';
+    document.getElementById('pv-name').innerText = name;
+    document.getElementById('pv-details').innerText = details;
+    document.getElementById('pv-state').innerText = state;
+  }
+
+  ['f-name', 'f-details', 'f-state', 'f-image'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+
+  async function applyRPC() {
+    if (!selectedApp) return toast('Pick an app first', 'err');
+    if (!selectedType) return toast('Pick an activity type', 'err');
+    const body = {
+      appKey: selectedApp.key,
+      type: selectedType,
+      name: document.getElementById('f-name').value,
+      details: document.getElementById('f-details').value,
+      state: document.getElementById('f-state').value,
+      largeImage: document.getElementById('f-image').value,
+      button1Label: document.getElementById('f-b1l').value,
+      button1URL: document.getElementById('f-b1u').value,
+      button2Label: document.getElementById('f-b2l').value,
+      button2URL: document.getElementById('f-b2u').value
+    };
+    try {
+      const r = await fetch('/api/rpc/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (d.error) return toast(d.error, 'err');
+      toast('RPC applied · ' + selectedApp.name, 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  function showClear() { document.getElementById('clear-modal').classList.add('show'); }
+  function hideClear() { document.getElementById('clear-modal').classList.remove('show'); }
+
+  async function doClear() {
+    hideClear();
+    try {
+      const r = await fetch('/api/rpc/clear', { method: 'POST' });
+      const d = await r.json();
+      if (d.error) return toast(d.error, 'err');
+      toast('RPC cleared on all accounts', 'ok');
+      document.getElementById('f-name').value = '';
+      document.getElementById('f-details').value = '';
+      document.getElementById('f-state').value = '';
+      document.getElementById('f-image').value = '';
+      document.getElementById('f-b1l').value = '';
+      document.getElementById('f-b1u').value = '';
+      document.getElementById('f-b2l').value = '';
+      document.getElementById('f-b2u').value = '';
+      selectedApp = null;
+      selectedType = null;
+      document.querySelectorAll('.app, .type').forEach(el => el.classList.remove('active'));
+      updatePreview();
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  loadApps();
+</script>
+</body>
+</html>
