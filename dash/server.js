@@ -85,7 +85,7 @@ function findClientById(clients, userId) {
 
 function start(clients, hooks) {
   hooks = hooks || {};
-  const port = 3000;
+  const port = process.env.PORT || 3000;
   const publicDir = path.join(__dirname, 'public');
 
   const server = http.createServer(async (req, res) => {
