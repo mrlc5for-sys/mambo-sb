@@ -1,0 +1,37 @@
+{
+  "prefix": "$",
+  "device": "desktop",
+  "theme": "purple",
+  "auto_delete_delay": 15,
+  "rpc": {
+    "key": "spotify",
+    "enabled": true,
+    "type": "LISTENING",
+    "name": "Spotify",
+    "details": "",
+    "state": "",
+    "largeImage": "",
+    "largeText": "Spotify",
+    "smallImage": "",
+    "smallText": "",
+    "button1Label": "",
+    "button1URL": "",
+    "button2Label": "",
+    "button2URL": "",
+    "appId": "383226320970055681",
+    "url": "",
+    "status": "online",
+    "start": 1792339151134
+  },
+  "ai": {
+    "model": "llama3-8b-8192",
+    "history_cap": 20,
+    "personality": "You are Soul, a helpful Discord assistant. Keep responses under 10 words when possible. Be direct and useful."
+  },
+  "rpc_stack": {
+    "enabled": false,
+    "primary": null,
+    "secondary": null,
+    "extras": []
+  }
+}
