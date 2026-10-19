@@ -9,28 +9,26 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
   body { font-family: 'Outfit', sans-serif; background: #06060a; color: #fff; overflow-x: hidden; }
-  body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(circle at 15% 20%, rgba(129,140,248,0.15), transparent 45%), radial-gradient(circle at 85% 30%, rgba(168,85,247,0.12), transparent 45%), radial-gradient(circle at 50% 90%, rgba(56,189,248,0.08), transparent 50%), #06060a; }
+  body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(circle at 15% 20%, rgba(129,140,248,0.15), transparent 45%), radial-gradient(circle at 85% 30%, rgba(168,85,247,0.12), transparent 45%), radial-gradient(circle at 50% 90%, rgba(56,189,248,0.08), transparent 50%), #06060a; animation: bgShift 20s ease-in-out infinite alternate; }
+  @keyframes bgShift { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
   .hidden { display: none !important; }
   .app { position: relative; z-index: 1; display: flex; height: 100vh; }
   
-  .sidebar { width: 260px; background: rgba(10,10,18,0.8); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.05); padding: 30px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .sidebar { width: 260px; background: rgba(10,10,18,0.8); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.05); padding: 30px 20px; display: flex; flex-direction: column; gap: 8px; }
   .brand { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #c4b5fd, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; }
-  .nav-item { padding: 12px 16px; border-radius: 12px; color: #aaaacc; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+  .nav-item { padding: 12px 16px; border-radius: 12px; color: #aaaacc; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 10px; }
   .nav-item:hover, .nav-item.active { background: rgba(129,140,248,0.15); color: #fff; }
   
   .main { flex: 1; padding: 40px; overflow-y: auto; }
   .page { display: none; animation: fade 0.3s ease; max-width: 1000px; margin: 0 auto; }
   .page.active { display: block; }
   @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  
-  .env-warning { background: rgba(255, 60, 60, 0.15); border: 1px solid #ff3333; color: #ff6b6b; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-weight: 600; display: none; }
-  .env-warning.show { display: block; }
 
-  .panel { background: rgba(20,20,30,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 25px; margin-bottom: 20px; }
+  .panel { background: rgba(20,20,30,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
   .panel h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; color: #e0e0ff; }
   
   .profile-header { display: flex; align-items: center; gap: 20px; }
-  .profile-header img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #818cf8; }
+  .profile-header img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #818cf8; box-shadow: 0 0 15px rgba(129,140,248,0.5); }
   .profile-info h1 { font-size: 1.8rem; font-weight: 700; }
   .profile-info p { color: #8888aa; font-size: 0.9rem; }
   
@@ -44,6 +42,11 @@
   .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99,102,241,0.4); }
   .btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
   .btn-danger { background: rgba(255,60,60,0.1); border: 1px solid #ff3333; color: #ff6b6b; }
+
+  .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .preset { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 15px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .preset:hover, .preset.active { background: rgba(129,140,248,0.15); border-color: #818cf8; transform: translateY(-3px); }
+  .preset span { font-size: 0.8rem; font-weight: 600; color: #e0e0ff; }
 
   .color-swatches { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
   .swatch { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.2s; }
@@ -86,8 +89,7 @@
   </div>
 
   <div class="main">
-    <div class="env-warning" id="env-warning"></div>
-
+    
     <div class="page active" id="page-account">
       <div class="panel">
         <h2>Account Overview</h2>
@@ -108,6 +110,8 @@
     <div class="page" id="page-rpc">
       <div class="panel">
         <h2>Rich Presence</h2>
+        <div class="preset-grid" id="preset-grid"></div>
+        
         <div class="form-row">
           <div class="field"><label>App Name</label><input id="rpc-name" placeholder="Spotify"></div>
           <div class="field"><label>Activity Type</label>
@@ -148,7 +152,7 @@
     <div class="page" id="page-stack">
       <div class="panel">
         <h2>RPC Stacking</h2>
-        <p style="color:#8888aa; margin-bottom: 20px;">Add multiple activities to show on your profile.</p>
+        <p style="color:#8888aa; margin-bottom: 20px;">Add multiple activities to show on your profile simultaneously.</p>
         <button class="btn" onclick="applyStack()">Apply Stack</button>
         <button class="btn btn-danger" onclick="clearStack()">Clear Stack</button>
       </div>
@@ -192,6 +196,7 @@
 <script>
   let themeColor = '#a29bfe';
   let me = null;
+  let presetsData = [];
 
   function toast(msg, type = 'ok') {
     const wrap = document.getElementById('toasts');
@@ -209,18 +214,7 @@
     if (el) el.classList.add('active');
     if (name === 'hosting') loadHosts();
     if (name === 'theme') loadTheme();
-  }
-
-  async function checkEnv() {
-    try {
-      const res = await fetch('/api/env-status');
-      const data = await res.json();
-      if (data.missing && data.missing.length > 0) {
-        const warn = document.getElementById('env-warning');
-        warn.classList.add('show');
-        warn.innerHTML = '⚠️ Missing Environment Variables: <strong>' + data.missing.join(', ') + '</strong>. Some features may not work.';
-      }
-    } catch (e) {}
+    if (name === 'rpc') loadPresets();
   }
 
   async function loadProfile() {
@@ -247,6 +241,33 @@
         }
       }
     } catch (e) { console.error(e); }
+  }
+
+  async function loadPresets() {
+    try {
+      const res = await fetch('/api/rpc/presets');
+      const data = await res.json();
+      if (data.success) {
+        presetsData = data.presets;
+        const grid = document.getElementById('preset-grid');
+        grid.innerHTML = data.presets.map(p => `
+          <div class="preset" onclick="selectPreset('${p.key}', this)">
+            <span>${p.name}</span>
+          </div>
+        `).join('');
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  function selectPreset(key, el) {
+    document.querySelectorAll('.preset').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    const preset = presetsData.find(p => p.key === key);
+    if (preset) {
+      document.getElementById('rpc-name').value = preset.name;
+      document.getElementById('rpc-type').value = preset.type || 'PLAYING';
+      updatePreview();
+    }
   }
 
   function updatePreview() {
@@ -299,8 +320,22 @@
       document.getElementById('rpc-name').value = '';
       document.getElementById('rpc-details').value = '';
       document.getElementById('rpc-state').value = '';
+      document.getElementById('rpc-btn1-label').value = '';
+      document.getElementById('rpc-btn1-url').value = '';
       updatePreview();
     }
+  }
+
+  async function applyStack() {
+    const res = await fetch('/api/rpc/stack/start', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) toast('Stack Applied');
+    else toast('Ensure Primary is set first', 'err');
+  }
+
+  async function clearStack() {
+    await fetch('/api/rpc/stack/clear', { method: 'POST' });
+    toast('Stack Cleared');
   }
 
   async function addHost() {
@@ -382,7 +417,6 @@
     });
   }
 
-  checkEnv();
   loadProfile();
   setInterval(loadProfile, 10000);
 </script>

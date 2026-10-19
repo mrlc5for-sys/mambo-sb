@@ -123,16 +123,7 @@ function start(clients, hooks) {
       return;
     }
 
-    if (url === '/api/env-status' && req.method === 'GET') {
-      const missing = [];
-      if (!env.DISCORD_TOKEN) missing.push('DISCORD_TOKEN');
-      if (!env.GATEKEEPER_TOKEN) missing.push('GATEKEEPER_TOKEN');
-      if (!env.GATEKEEPER_ID) missing.push('GATEKEEPER_ID');
-      if (!env.GATEKEEPER_SECRET) missing.push('GATEKEEPER_SECRET');
-      if (!env.VAULT_SECRET) missing.push('VAULT_SECRET');
-      sendJson(res, 200, { success: true, missing });
-      return;
-    }
+    
 
     if (url === '/api/login' && req.method === 'POST') {
       const data = await readBody(req);

@@ -56,6 +56,17 @@ const COGS = [
   ['lookup', lookupCog], ['backup', backupCog], ['quest', questCog], ['wallet', walletCog], ['death', deathCog], ['antinuke', antinukeCog], ['cloner', clonerCog], ['profile', profileCog], ['mass', massCog], ['tracker', trackerCog]
 ];
 
+
+function checkEnvVars() {
+  const required = ['DISCORD_TOKEN', 'APP_USER', 'APP_PASS', 'ADMIN_ID', 'VAULT_SECRET', 'GATEKEEPER_TOKEN', 'GATEKEEPER_ID', 'GATEKEEPER_SECRET'];
+  for (const env of required) {
+    if (!process.env[env]) {
+      logger.warn('Missing Environment Variable: ' + env);
+    }
+  }
+}
+checkEnvVars();
+
 const configPath = path.join(__dirname, 'config.json');
 if (!fs.existsSync(configPath)) { console.error('config.json missing'); process.exit(1); }
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
