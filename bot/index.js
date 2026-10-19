@@ -8,7 +8,8 @@ const CLIENT_ID = process.env.GATEKEEPER_ID;
 const CLIENT_SECRET = process.env.GATEKEEPER_SECRET;
 const REDIRECT_URI = process.env.GATEKEEPER_REDIRECT || 'http://localhost:3000/api/auth/callback';
 
-if (!BOT_TOKEN || !CLIENT_ID) {
+if (!BOT_TOKEN || !CLIENT_ID || !CLIENT_SECRET) {
+  console.log('⚠️ Gatekeeper vars missing, bot disabled.');
   process.exit(0);
 }
 

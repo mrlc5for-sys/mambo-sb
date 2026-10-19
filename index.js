@@ -2,6 +2,15 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('discord.js-selfbot-v13');
+
+if (process.env.GATEKEEPER_TOKEN && process.env.GATEKEEPER_ID && process.env.GATEKEEPER_SECRET) {
+  try {
+    require('./bot/index.js');
+  } catch (e) {
+    console.log('⚠️ Gatekeeper bot failed to load: ' + e.message);
+  }
+}
+
 const logger = require('./helpers/logger');
 const dashboard = require('./dash/server');
 const users = require('./helpers/users');

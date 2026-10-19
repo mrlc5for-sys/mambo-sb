@@ -90,6 +90,9 @@ function start(clients, hooks) {
     const url = req.url.split('?')[0];
 
     if (url === '/api/auth/callback' && req.method === 'GET') {
+      if (!env.GATEKEEPER_ID || !env.GATEKEEPER_SECRET) {
+        return sendJson(res, 500, { error: 'Gatekeeper OAuth is not configured in .env' });
+      }
       const code = new URL(req.url, 'http://localhost').searchParams.get('code');
       if (!code) return sendJson(res, 400, { error: 'No code provided' });
       
