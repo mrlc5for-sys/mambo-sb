@@ -12,6 +12,7 @@ const rpcCog = require('./cogs/rpc');
 const infoCog = require('./cogs/info');
 const utilCog = require('./cogs/util');
 const funCog = require('./cogs/fun');
+const reactCog = require('./cogs/react');
 const ownerCog = require('./cogs/owner');
 const voiceCog = require('./cogs/voice');
 const aiCog = require('./cogs/ai');
@@ -32,7 +33,7 @@ global.__BOT_START__ = Date.now();
 const COGS = [
   ['general', generalCog], ['presence', presenceCog], ['rpc', rpcCog],
   ['info', infoCog], ['util', utilCog],
-  ['fun', funCog], ['owner', ownerCog], ['voice', voiceCog],
+  ['fun', funCog], ['react', reactCog], ['owner', ownerCog], ['voice', voiceCog],
   ['ai', aiCog], ['mod', modCog], ['music', musicCog],
   ['image', imageCog], ['beefy', beefyCog], ['trackers', trackersCog],
   ['apo', apoCog], ['crypto', cryptoCog], ['snipers', snipersCog],
