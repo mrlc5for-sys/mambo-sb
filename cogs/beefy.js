@@ -157,7 +157,12 @@ function register(client) {
     const sub = (args[0] || '').toLowerCase();
     if (sub === 'list' || !sub) {
       const words = readLines(PACK_FILE);
-      return m.edit(codeblock('pack · words (' + words.length + ')', words.slice(0, 40).join('\n')));
+      const shown = words.slice(0, 20);
+      let body = shown.join('\n');
+      if (words.length > 20) {
+        body += '\n... and ' + (words.length - 20) + ' more lines';
+      }
+      return m.edit(codeblock('pack · words (' + words.length + ')', body));
     }
     if (sub === 'add') {
       const word = args.slice(1).join(' ');

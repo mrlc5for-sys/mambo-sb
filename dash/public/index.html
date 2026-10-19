@@ -1092,6 +1092,7 @@
             (e.details ? '<div style="font-size:0.72rem; color:#8888aa; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + e.details + (e.state ? ' · ' + e.state : '') + '</div>' : '') +
           '</div>' +
           '<button class="btn btn-ghost btn-sm" onclick="stackEditExtra(' + (i + 1) + ')" style="padding:6px 12px; font-size:0.7rem;">Edit</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openEditModal(' + (i + 1) + ')" style="padding:6px 12px; font-size:0.7rem; margin-right:6px;">Edit</button>' +
           '<button class="btn btn-danger btn-sm" onclick="stackRemove(' + (i + 1) + ')" style="padding:6px 12px; font-size:0.7rem;">Remove</button>' +
         '</div>'
       ).join('');
@@ -1371,6 +1372,54 @@
       .then(d => { if (d.success) { toast('Left voice', 'ok'); setTimeout(voiceRefresh, 1000); } });
   }
 
+
+  let editingStackIndex = null;
+
+  function openEditModal(index) {
+    editingStackIndex = index;
+    const extras = currentStack.extras || [];
+    const e = extras[index - 1];
+    if (!e) return;
+    document.getElementById('edit-s-name').value = e.nameOverride || '';
+    document.getElementById('edit-s-details').value = e.details || '';
+    document.getElementById('edit-s-state').value = e.state || '';
+    document.getElementById('edit-s-image').value = e.largeImage || '';
+    document.getElementById('edit-stack-modal').classList.add('show');
+  }
+
+  function closeEditModal() {
+    editingStackIndex = null;
+    document.getElementById('edit-stack-modal').classList.remove('show');
+  }
+
+  function saveEditModal() {
+    if (editingStackIndex === null) return;
+    const body = {
+      index: editingStackIndex,
+      fields: {
+        nameOverride: document.getElementById('edit-s-name').value,
+        details: document.getElementById('edit-s-details').value,
+        state: document.getElementById('edit-s-state').value,
+        largeImage: document.getElementById('edit-s-image').value
+      }
+    };
+    fetch('/api/rpc/stack/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        toast('Stacked card updated', 'ok');
+        closeEditModal();
+        loadStack();
+      } else {
+        toast(d.error || 'Failed', 'err');
+      }
+    });
+  }
+
   function showPage(name, el) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
@@ -1387,5 +1436,32 @@
     if (e.key === 'Enter') doLogin();
   });
 </script>
+
+<div class="modal-bg" id="edit-stack-modal">
+  <div class="modal">
+    <h3>Edit Stacked Card</h3>
+    <div class="field" style="margin-top:15px;">
+      <label>Name Override (leave blank for default)</label>
+      <input id="edit-s-name" placeholder="e.g. Custom Name">
+    </div>
+    <div class="field">
+      <label>Details</label>
+      <input id="edit-s-details" placeholder="Line 2">
+    </div>
+    <div class="field">
+      <label>State</label>
+      <input id="edit-s-state" placeholder="Line 3">
+    </div>
+    <div class="field">
+      <label>Large Image URL</label>
+      <input id="edit-s-image" placeholder="https://...">
+    </div>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

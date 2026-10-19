@@ -255,7 +255,15 @@ async function pushStack(c) {
       start: Date.now()
     };
     const act = await buildActivity(c, entry);
-    if (act) activities.push(act);
+    if (act) {
+      // Apply Spotify hack for stacked cards
+      if (entry.appId === '383226320970055681' || entry.name === 'Spotify') {
+        act.flags = 48;
+        act.id = 'spotify:1';
+        act.party = { id: 'spotify:' + c.user.id };
+      }
+      activities.push(act);
+    }
     await sleep(150);
   }
 
