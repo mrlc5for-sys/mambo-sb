@@ -260,6 +260,24 @@ function start(clients, hooks) {
       return;
     }
 
+    if (url === '/api/rpc/stack/primary/edit' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
+      const data = await readBody(req);
+      const c = findClient(clients, s.username);
+      if (!c || !c.cfg.rpc_stack || !c.cfg.rpc_stack.primary) return sendJson(res, 404, { success: false });
+      
+      const p = c.cfg.rpc_stack.primary;
+      if (data.details !== undefined) p.details = data.details;
+      if (data.state !== undefined) p.state = data.state;
+      if (data.largeImage !== undefined) p.largeImage = data.largeImage;
+      
+      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
+      const rpcCog = require('../cogs/rpc');
+      if (c.cfg.rpc_stack.enabled) await rpcCog.pushStack(c);
+      sendJson(res, 200, { success: true });
+      return;
+    }
     if (url === '/api/rpc/stack/add' && req.method === 'POST') {
       const s = getSession(req);
       if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
@@ -600,6 +618,46 @@ function start(clients, hooks) {
       return;
     }
 
+    if (url === '/api/files' && req.method === 'GET') {
+      const s = getSession(req);
+      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false });
+      const root = path.join(__dirname, '..');
+      const files = [];
+      if (fs.existsSync(path.join(root, 'proxies.txt'))) files.push('proxies.txt');
+      if (fs.existsSync(path.join(root, 'tokens.txt'))) files.push('tokens.txt');
+      if (fs.existsSync(path.join(root, 'data'))) {
+        fs.readdirSync(path.join(root, 'data')).forEach(f => {
+          if (f.endsWith('.txt')) files.push('data/' + f);
+        });
+      }
+      sendJson(res, 200, { success: true, files });
+      return;
+    }
+
+    if (url === '/api/files/read' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false });
+      const data = await readBody(req);
+      const root = path.join(__dirname, '..');
+      const target = path.join(root, data.file);
+      if (!target.startsWith(root)) return sendJson(res, 403, { success: false });
+      if (!fs.existsSync(target)) return sendJson(res, 404, { success: false });
+      const content = fs.readFileSync(target, 'utf8');
+      sendJson(res, 200, { success: true, content });
+      return;
+    }
+
+    if (url === '/api/files/write' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false });
+      const data = await readBody(req);
+      const root = path.join(__dirname, '..');
+      const target = path.join(root, data.file);
+      if (!target.startsWith(root)) return sendJson(res, 403, { success: false });
+      fs.writeFileSync(target, data.content);
+      sendJson(res, 200, { success: true });
+      return;
+    }
     if (url === '/api/users' && req.method === 'GET') {
       const s = getSession(req);
       if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false, error: 'Insufficient role' });

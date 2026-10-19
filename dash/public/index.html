@@ -195,6 +195,7 @@
       <div class="nav-tab" onclick="showPage('commands', this)">⌨️ Commands</div>
       <div class="nav-tab" onclick="showPage('customstatus', this)">💬 Custom Status</div>
       <div class="nav-tab" onclick="showPage('voice', this)">🎙️ Voice</div>
+         <div class="nav-tab admin-tab hidden" onclick="showPage('files', this)">📁 Files</div>
       <div class="nav-tab admin-tab hidden" onclick="showPage('users', this)">👥 Users</div>
     </div>
 
@@ -450,6 +451,25 @@
       </div>
     </div>
 
+
+    <div class="page" id="page-files">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>File Editor</h2>
+          <button class="btn btn-ghost btn-sm" onclick="loadFileList()">Refresh</button>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Select File</label>
+            <select id="file-select" onchange="loadFileContent()"></select>
+          </div>
+        </div>
+        <div class="field">
+          <textarea id="file-content" rows="15" style="width:100%; padding:12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; font-family:monospace;" placeholder="File content..."></textarea>
+        </div>
+        <button class="btn btn-primary" style="width:auto; margin-top:10px;" onclick="saveFileContent()">Save File</button>
+      </div>
+    </div>
     <div class="page" id="page-users">
       <div class="panel">
         <div class="panel-title"><h2>Add User</h2></div>
@@ -617,6 +637,7 @@
         document.getElementById('dash-rpc-state').innerText = r.state || '—';
 
         if (d.role === 'owner' || d.role === 'admin') {
+          document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('hidden'));
           document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('hidden'));
         }
         if (d.role === 'owner') {
@@ -1072,7 +1093,7 @@
     html += '<div style="flex:1; min-width:0;">';
     html += '<div style="font-size:0.65rem; color:#6666aa; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px;">Primary</div>';
     if (s.primary) {
-      html += '<div style="font-weight:700; font-size:0.95rem;">' + s.primary.name + ' <span style="color:#6666aa; font-weight:500; font-size:0.78rem;">· ' + s.primary.type + '</span></div>';
+      html += '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div style="font-weight:700; font-size:0.95rem;">' + s.primary.name + ' <span style="color:#6666aa; font-weight:500; font-size:0.78rem;">· ' + s.primary.type + '</span></div><button class="btn btn-ghost btn-sm" onclick="openPrimaryModal()" style="padding:6px 12px; font-size:0.7rem;">Edit</button></div>';
     } else {
       html += '<div style="color:#6666aa; font-size:0.85rem;">None set</div>';
     }
@@ -1420,6 +1441,79 @@
     });
   }
 
+
+  function loadFileList() {
+    fetch('/api/files')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const sel = document.getElementById('file-select');
+        sel.innerHTML = d.files.map(f => '<option value="' + f + '">' + f + '</option>').join('');
+        if (d.files.length) loadFileContent();
+      });
+  }
+
+  function loadFileContent() {
+    const file = document.getElementById('file-select').value;
+    if (!file) return;
+    fetch('/api/files/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) document.getElementById('file-content').value = d.content;
+    });
+  }
+
+  function saveFileContent() {
+    const file = document.getElementById('file-select').value;
+    const content = document.getElementById('file-content').value;
+    if (!file) return;
+    fetch('/api/files/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file, content })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) toast('File saved', 'ok');
+      else toast('Failed to save file', 'err');
+    });
+  }
+
+  function openPrimaryModal() {
+    const p = currentStack.primary;
+    if (!p) return;
+    document.getElementById('edit-p-details').value = p.details || '';
+    document.getElementById('edit-p-state').value = p.state || '';
+    document.getElementById('edit-p-image').value = p.largeImage || '';
+    document.getElementById('edit-primary-modal').classList.add('show');
+  }
+
+  function closePrimaryModal() {
+    document.getElementById('edit-primary-modal').classList.remove('show');
+  }
+
+  function savePrimaryModal() {
+    const body = {
+      details: document.getElementById('edit-p-details').value,
+      state: document.getElementById('edit-p-state').value,
+      largeImage: document.getElementById('edit-p-image').value
+    };
+    fetch('/api/rpc/stack/primary/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { toast('Primary updated', 'ok'); closePrimaryModal(); loadStack(); }
+      else toast(d.error, 'err');
+    });
+  }
+
   function showPage(name, el) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
@@ -1430,6 +1524,7 @@
     if (name === 'users') { loadUsers(); if (me && (me.role === 'owner' || me.role === 'admin')) loadClients(); }
     if (name === 'customstatus') loadCustomStatus();
     if (name === 'voice') voiceRefresh();
+    if (name === 'files') loadFileList();
   }
 
   document.getElementById('login-pass').addEventListener('keypress', e => {
@@ -1459,6 +1554,20 @@
     <div class="row">
       <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveEditModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-bg" id="edit-primary-modal">
+  <div class="modal">
+    <h3>Edit Primary RPC</h3>
+    <div class="field"><label>Details</label><input id="edit-p-details"></div>
+    <div class="field"><label>State</label><input id="edit-p-state"></div>
+    <div class="field"><label>Large Image</label><input id="edit-p-image"></div>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closePrimaryModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePrimaryModal()">Save Changes</button>
     </div>
   </div>
 </div>

@@ -117,6 +117,25 @@ function register(client) {
     await m.edit(codeblock('beefy', body.join('\n')));
   }, { aliases: ['bf'], category: 'beefy', description: 'beefy menu', sticky: true });
 
+
+  client.registerCommand('proxyscrape', async (c, m) => {
+    await m.edit(codeblock('proxy', 'scraping...'));
+    try {
+      const proxyManager = require('../helpers/proxyManager');
+      const count = await proxyManager.scrape();
+      await m.edit(codeblock('proxy', kv([['scraped', count + ' proxies'], ['saved to', 'proxies.txt']])));
+    } catch (e) { await m.edit(codeblock('proxy', 'error: ' + e.message)); }
+  }, { category: 'beefy', description: 'scrape free proxies' });
+
+  client.registerCommand('proxyclean', async (c, m) => {
+    await m.edit(codeblock('proxy', 'testing proxies (this takes a while)...'));
+    try {
+      const proxyManager = require('../helpers/proxyManager');
+      const valid = await proxyManager.clean();
+      await m.edit(codeblock('proxy', kv([['valid', valid + ' working proxies']])));
+    } catch (e) { await m.edit(codeblock('proxy', 'error: ' + e.message)); }
+  }, { category: 'beefy', description: 'test and remove dead proxies' });
+
   client.registerCommand('pack', async (c, m, args) => {
     const target = idFromArg(args[0]);
     if (!target) return m.edit(codeblock('pack', 'usage: pack @user [delay_ms]'));
@@ -124,18 +143,49 @@ function register(client) {
     if (packLoops.has(cid)) clearInterval(packLoops.get(cid));
     const words = readLines(PACK_FILE);
     if (!words.length) return m.edit(codeblock('pack', 'pack.txt empty'));
-    const delay = parseInt(args[1], 10) || 1500;
-    const id = setInterval(async () => {
+    
+    const proxyManager = require('../helpers/proxyManager');
+    const axios = require('axios');
+    const { HttpsProxyAgent } = require('https-proxy-agent');
+    
+    const delay = parseInt(args[1], 10) || 800;
+    
+    const sendFast = async () => {
       const line = words[Math.floor(Math.random() * words.length)];
-      try { await m.channel.send('<' + '@' + target + '> ' + line); } catch (e) {}
+      const proxy = proxyManager.getNext();
+      
+      try {
+        if (proxy) {
+          const agent = new HttpsProxyAgent('http://' + proxy);
+          await axios.post('https://discord.com/api/v10/channels/' + cid + '/messages', 
+            { content: '<@' + target + '> ' + line },
+            { headers: { Authorization: c.token }, httpsAgent: agent, timeout: 5000 }
+          );
+        } else {
+          await m.channel.send('<' + '@' + target + '> ' + line);
+        }
+      } catch (e) {
+        if (!proxy) {
+          try { await m.channel.send('<' + '@' + target + '> ' + line); } catch (err) {}
+        }
+      }
+    };
+
+    const id = setInterval(async () => {
+      const promises = [];
+      const burst = proxyManager.getList().length > 0 ? 5 : 1;
+      for (let i = 0; i < burst; i++) promises.push(sendFast());
+      await Promise.allSettled(promises);
     }, delay);
+    
     packLoops.set(cid, id);
     await m.edit(codeblock('pack · start', kv([
       ['target', target],
       ['delay', delay + 'ms'],
-      ['lines', words.length]
+      ['proxies', proxyManager.getList().length],
+      ['mode', proxyManager.getList().length > 0 ? 'FAST (API)' : 'WS (Slow)']
     ])));
-  }, { aliases: ['spack'], category: 'beefy', description: 'insult loop' });
+  }, { aliases: ['spack'], category: 'beefy', description: 'fast proxy insult loop' });
 
   client.registerCommand('packstop', async (c, m) => {
     const cid = m.channel.id;
