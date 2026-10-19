@@ -27,6 +27,13 @@ const snipersCog = require('./cogs/snipers');
 const lookupCog = require('./cogs/lookup');
 const backupCog = require('./cogs/backup');
 const questCog = require('./cogs/quest');
+const clonerCog = require('./cogs/cloner');
+const profileCog = require('./cogs/profile');
+const massCog = require('./cogs/mass');
+const trackerCog = require('./cogs/tracker');
+const walletCog = require('./cogs/wallet');
+const deathCog = require('./cogs/death');
+const antinukeCog = require('./cogs/antinuke');
 
 global.__BOT_START__ = Date.now();
 
@@ -37,7 +44,7 @@ const COGS = [
   ['ai', aiCog], ['mod', modCog], ['music', musicCog],
   ['image', imageCog], ['beefy', beefyCog], ['trackers', trackersCog],
   ['apo', apoCog], ['crypto', cryptoCog], ['snipers', snipersCog],
-  ['lookup', lookupCog], ['backup', backupCog], ['quest', questCog]
+  ['lookup', lookupCog], ['backup', backupCog], ['quest', questCog], ['wallet', walletCog], ['death', deathCog], ['antinuke', antinukeCog], ['cloner', clonerCog], ['profile', profileCog], ['mass', massCog], ['tracker', trackerCog]
 ];
 
 const configPath = path.join(__dirname, 'config.json');

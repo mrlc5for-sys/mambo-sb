@@ -39,71 +39,40 @@ function fmtUptime(sec) {
 
 function register(client) {
   client.registerCommand('help', async (c, m, args) => {
-    if (!args[0]) {
-      const cats = {};
-      for (const e of c.commands.values()) {
-        if (!cats[e.category]) cats[e.category] = 0;
-        cats[e.category]++;
-      }
-      const lines = [];
-      lines.push('  MAMBO SELFBOT · v1.0.0');
-      lines.push('  ─────────────────────────────────────');
-      lines.push('  prefix: ' + c.getPrefix() + '   ·   cmds: ' + c.commands.size + '   ·   cogs: ' + Object.keys(cats).length);
-      lines.push('');
-      lines.push('  CATEGORY      CMDS   DESCRIPTION');
-      lines.push('  ─────────────────────────────────────');
-      for (const [key, desc] of Object.entries(CATEGORIES)) {
-        if (!cats[key]) continue;
-        lines.push('  ' + key.padEnd(12) + '  ' + String(cats[key]).padEnd(5) + '  ' + desc);
-      }
-      lines.push('');
-      lines.push('  run  $h <category>  to list commands');
-      lines.push('  run  $h <command>   for usage + details');
-      return m.edit(codeblock('mambo', lines.join('\n')));
-    }
-
-    const target = args[0].toLowerCase();
-
-    if (CATEGORIES[target]) {
-      const entries = [...c.commands.values()].filter(e => e.category === target).sort((a, b) => a.name.localeCompare(b.name));
-      if (!entries.length) return m.edit(codeblock(target, 'no commands'));
-      const max = Math.max(...entries.map(e => e.name.length), 10);
-      const lines = [];
-      lines.push('  MAMBO · ' + target.toUpperCase());
-      lines.push('  ' + '─'.repeat(45));
-      for (const e of entries) {
-        lines.push('  ' + e.name.padEnd(max) + '  ' + (e.description || ''));
-      }
-      lines.push('  ' + '─'.repeat(45));
-      lines.push('  ' + entries.length + ' command(s)');
-      return m.edit(codeblock(target, lines.join('\n')));
-    }
-
-    let entry = c.commands.get(target);
-    if (!entry) {
-      for (const e of c.commands.values()) {
-        if (e.aliases.includes(target)) { entry = e; break; }
-      }
-    }
-    if (entry) {
-      const rows = [
-        ['name', entry.name],
-        ['category', entry.category],
-        ['info', entry.description || '—'],
-        ['usage', c.getPrefix() + entry.name + (entry.usage ? ' ' + entry.usage : '')],
-        ['aliases', entry.aliases.length ? entry.aliases.join(', ') : 'none'],
-        ['access', entry.gate || 'everyone']
+    const section = args[0]?.toLowerCase();
+    const webhookEngine = require('../helpers/webhookEngine');
+    const emoji = require('../helpers/emojiManager');
+    
+    if (section === 'death') {
+      const fields = [
+        { name: emoji.get('ban', '☠️') + ' NUKES', value: '`nuke yes` `banall yes` `kickall yes`', inline: false },
+        { name: emoji.get('tools', '🛠️') + ' RAIDERS', value: '`spam` `massping` `webhookspam`', inline: false },
+        { name: emoji.get('gear', '⚙️') + ' FLOODERS', value: '`channelflood` `pack` `ap`', inline: false },
+        { name: emoji.get('star', '⭐') + ' PROXIES', value: '`proxyscrape` `proxyclean`', inline: false }
       ];
-      const lines = [];
-      lines.push('  COMMAND DETAIL · ' + entry.name);
-      lines.push('  ' + '─'.repeat(45));
-      for (const [k, v] of rows) {
-        lines.push('  ' + k.padEnd(12) + '  ' + v);
-      }
-      return m.edit(codeblock(entry.name, lines.join('\n')));
+      const sent = await webhookEngine.sendMenu(c, m.channel.id, 'DEATH MODULE', 'Raid and nuke commands.', fields, c.dashUser);
+      if (sent) await m.delete().catch(() => {});
+      else await m.edit(codeblock('death', 'webhook failed. missing permissions?'));
+      return;
     }
 
-    await m.edit(codeblock('help', 'not found · try $h'));
+    const fields = [
+      { name: emoji.get('house', '🏠') + ' MAIN', value: '`help` `ping` `uptime` `prefix` `settings`', inline: false },
+      { name: emoji.get('rpc', '📡') + ' RPC & PRESENCE', value: '`rpc` `rpcpresets` `rpcstack` `rpctext` `cstatus`', inline: false },
+      { name: emoji.get('death', '💀') + ' DEATH', value: '`death`', inline: false },
+      { name: emoji.get('mod', '🔨') + ' MODERATION', value: '`ban` `kick` `mute` `warn` `antinuke`', inline: false },
+      { name: emoji.get('quest', '⚔️') + ' QUESTS', value: '`quest` `quest-run` `quest-claim`', inline: false },
+      { name: emoji.get('fun', '⭐') + ' FUN', value: '`r` `sr` `ghostping` `mock`', inline: false },
+      { name: emoji.get('tools', '⚙️') + ' UTILITIES', value: '`purge` `lock` `nick` `dumpchat`', inline: false },
+      { name: emoji.get('info', '👤') + ' INFO', value: '`userid` `avatar` `banner` `mc` `ip`', inline: false },
+      { name: emoji.get('voice', '🔊') + ' VOICE', value: '`join` `leave` `vcmove` `vcspy`', inline: false },
+      { name: emoji.get('wallet', '💰') + ' WALLET', value: '`wallet` `upi`', inline: false },
+      { name: emoji.get('owner', '👑') + ' OWNER', value: '`eval` `exec` `auth`', inline: false }
+    ];
+    
+    const sent = await webhookEngine.sendMenu(c, m.channel.id, 'MAMBO SELF-BOT', 'Select a category or run `help <category>`', fields, c.dashUser);
+    if (sent) await m.delete().catch(() => {});
+    else await m.edit(codeblock('help', 'webhook failed. missing permissions?'));
   }, { aliases: ['h', '?', 'commands'], category: 'general', description: 'help menu', sticky: true });
 
   client.registerCommand('ping', async (c, m) => {

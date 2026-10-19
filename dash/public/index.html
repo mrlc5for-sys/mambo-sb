@@ -153,7 +153,15 @@
   @media (max-width: 900px) {
     .rpc-picker-grid { grid-template-columns: 1fr !important; }
   }
-</style>
+
+    .toggle-switch { display: flex; align-items: center; cursor: pointer; }
+    .toggle-switch input { display: none; }
+    .toggle-switch .slider { position: relative; width: 50px; height: 26px; background-color: #333; border-radius: 34px; transition: .4s; margin-left: 15px; }
+    .toggle-switch .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
+    .toggle-switch input:checked + .slider { background-color: var(--primary-color); box-shadow: 0 0 15px var(--primary-color); }
+    .toggle-switch input:checked + .slider:before { transform: translateX(24px); }
+    
+  </style>
 </head>
 <body>
 
@@ -192,6 +200,10 @@
     <div class="nav-tabs">
       <div class="nav-tab active" onclick="showPage('dashboard', this)">🏠 Dashboard</div>
       <div class="nav-tab" onclick="showPage('rpc', this)">📡 RPC</div>
+         <div class="nav-tab" onclick="showPage('hosting', this)">🤖 Hosting</div>
+         <div class="nav-tab" onclick="showPage('antinuke', this)">🛡️ Anti-Nuke</div>
+         <div class="nav-tab" onclick="showPage('theme', this)">🎨 Theme</div>
+         <div class="nav-tab admin-tab hidden" onclick="showPage('terminal', this)">💻 Terminal</div>
       <div class="nav-tab" onclick="showPage('commands', this)">⌨️ Commands</div>
       <div class="nav-tab" onclick="showPage('customstatus', this)">💬 Custom Status</div>
       <div class="nav-tab" onclick="showPage('voice', this)">🎙️ Voice</div>
@@ -452,6 +464,53 @@
     </div>
 
 
+
+    <div class="page" id="page-hosting">
+      <div class="panel">
+        <div class="panel-title"><h2>Host a Token</h2></div>
+        <div class="form-row">
+          <div class="field"><label>Discord Token</label><input id="host-token" type="password" placeholder="Paste token here..."></div>
+        </div>
+        <button class="btn btn-primary" style="width:auto;" onclick="addHostToken()">Start Hosting</button>
+        <div style="margin-top: 20px;">
+          <h3 style="font-size: 0.9rem; color: #aaaacc; margin-bottom: 10px;">Active Clients</h3>
+          <div id="active-clients" class="user-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-antinuke">
+      <div class="panel">
+        <div class="panel-title"><h2>Anti-Nuke Protection</h2></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 15px 0;">
+          <span>Enable Anti-Nuke</span>
+          <label class="toggle-switch"><input type="checkbox" id="an-toggle" onchange="saveAntiNuke()"><span class="slider"></span></label>
+        </div>
+        <div class="field">
+          <label>Whitelisted User IDs (comma separated)</label>
+          <input id="an-whitelist" placeholder="123456789, 987654321">
+        </div>
+        <button class="btn btn-primary" style="width:auto;" onclick="saveAntiNuke()">Save Settings</button>
+      </div>
+    </div>
+    
+    <div class="page" id="page-theme">
+      <div class="panel">
+        <div class="panel-title"><h2>Dashboard Theme</h2></div>
+        <div class="field">
+          <label>Embed Accent Color</label>
+          <input type="color" id="theme-color" value="#8a2be2" style="width: 100%; height: 50px; padding: 5px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;">
+        </div>
+        <button class="btn btn-primary" style="width:auto;" onclick="saveTheme()">Save Theme</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-terminal">
+      <div class="panel">
+        <div class="panel-title"><h2>Live Terminal</h2></div>
+        <div id="terminal-output" style="background:#000; color:#0f0; font-family:monospace; height:400px; overflow-y:auto; padding:15px; border-radius:10px; font-size:12px;"></div>
+      </div>
+    </div>
     <div class="page" id="page-files">
       <div class="panel">
         <div class="panel-title">
@@ -1514,6 +1573,109 @@
     });
   }
 
+
+  function loadHosting() {
+    fetch('/api/hosting/clients')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        const list = document.getElementById('active-clients');
+        if (!d.tokens.length) {
+          list.innerHTML = '<p style="color:#6666aa; font-size:0.85rem;">No active clients.</p>';
+          return;
+        }
+        list.innerHTML = d.tokens.map(t => `
+          <div class="user-item">
+            <div class="dot"></div>
+            <div class="info"><div class="name">${t.token}</div><div class="meta">Uptime: ${Math.floor(t.uptime / 1000)}s</div></div>
+            <button class="btn btn-danger btn-sm" onclick="removeHostToken('${t.fullToken}')">Stop</button>
+          </div>
+        `).join('');
+      });
+  }
+
+  function addHostToken() {
+    const token = document.getElementById('host-token').value;
+    if (!token) return toast('Paste a token first', 'err');
+    fetch('/api/hosting/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { toast('Client started', 'ok'); document.getElementById('host-token').value = ''; loadHosting(); }
+      else toast(d.reason || 'Failed to start', 'err');
+    });
+  }
+
+  function removeHostToken(token) {
+    fetch('/api/hosting/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) { toast('Client stopped', 'ok'); loadHosting(); } });
+  }
+
+  function loadAntiNuke() {
+    fetch('/api/antinuke')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        document.getElementById('an-toggle').checked = d.state.enabled;
+        document.getElementById('an-whitelist').value = d.state.whitelist.join(', ');
+      });
+  }
+
+  function saveAntiNuke() {
+    const enabled = document.getElementById('an-toggle').checked;
+    const whitelist = document.getElementById('an-whitelist').value.split(',').map(s => s.trim()).filter(Boolean);
+    fetch('/api/antinuke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, whitelist })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) toast('Anti-Nuke settings saved', 'ok'); });
+  }
+
+
+  function loadTheme() {
+    fetch('/api/theme')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) document.getElementById('theme-color').value = d.theme.color;
+      });
+  }
+
+  function saveTheme() {
+    const color = document.getElementById('theme-color').value;
+    fetch('/api/theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ color })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) toast('Theme saved', 'ok'); });
+  }
+
+
+  let terminalSource = null;
+  
+  function initTerminal() {
+    if (terminalSource) return;
+    const output = document.getElementById('terminal-output');
+    terminalSource = new EventSource('/api/logs/stream');
+    terminalSource.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      const color = data.level === 'err' ? '#f00' : (data.level === 'warn' ? '#ff0' : '#0f0');
+      output.innerHTML += `<div style="color:${color}; margin-bottom:2px;">[${data.time}] ${data.msg}</div>`;
+      output.scrollTop = output.scrollHeight;
+    };
+  }
+
   function showPage(name, el) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
@@ -1525,6 +1687,10 @@
     if (name === 'customstatus') loadCustomStatus();
     if (name === 'voice') voiceRefresh();
     if (name === 'files') loadFileList();
+    if (name === 'terminal') initTerminal();
+    if (name === 'theme') loadTheme();
+    if (name === 'hosting') loadHosting();
+    if (name === 'antinuke') loadAntiNuke();
   }
 
   document.getElementById('login-pass').addEventListener('keypress', e => {

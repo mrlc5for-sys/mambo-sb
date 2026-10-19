@@ -55,4 +55,33 @@ function register(client) {
   }, { category: 'util', description: 'set channel topic' });
 }
 
+
+  client.registerCommand('firstmsg', async (c, m) => {
+    try {
+      const msgs = await m.channel.messages.fetch({ limit: 1, after: '0' });
+      const first = msgs.first();
+      if (!first) return m.edit(codeblock('firstmsg', 'none found'));
+      await m.edit(codeblock('firstmsg', kv([['author', first.author.tag], ['link', first.url]])));
+    } catch (e) { await m.edit(codeblock('firstmsg', 'error: ' + e.message)); }
+  }, { category: 'util', description: 'oldest message' });
+
+  client.registerCommand('quote', async (c, m, args) => {
+    const text = args.join(' ');
+    if (!text) return m.edit(codeblock('quote', 'usage: quote <text>'));
+    const url = 'https://api.popcat.xyz/quote?text=' + encodeURIComponent(text) + '&username=' + encodeURIComponent(c.user.username);
+    await m.channel.send(url);
+    await m.delete().catch(() => {});
+  }, { category: 'util', description: 'quote image' });
+
+  client.registerCommand('jumbo', async (c, m, args) => {
+    const emoji = args[0];
+    if (!emoji) return m.edit(codeblock('jumbo', 'usage: jumbo <emoji>'));
+    const match = emoji.match(/<a?:\w+:(\d+)>/);
+    if (!match) return m.edit(codeblock('jumbo', 'invalid custom emoji'));
+    const ext = emoji.startsWith('<a:') ? 'gif' : 'png';
+    await m.channel.send({ files: ['https://cdn.discordapp.com/emojis/' + match[1] + '.' + ext]}).catch(() => {});
+    await m.delete().catch(() => {});
+  }, { category: 'util', description: 'send emoji as image' });
+
+
 module.exports = { register };

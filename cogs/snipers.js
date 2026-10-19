@@ -7,6 +7,8 @@ const ROOT = path.resolve(__dirname, '..');
 const DATA = path.join(ROOT, 'data');
 const NITRO_FILE = path.join(DATA, 'sniper-nitro.json');
 const LOG_FILE = path.join(DATA, 'sniper-log.json');
+const GW_FILE = path.join(DATA, 'sniper-gw.json');
+let gwEnabled = false;
 
 const GIFT_RE = /discord\.gift\/([a-zA-Z0-9]+)|discord\.com\/gifts\/([a-zA-Z0-9]+)/gi;
 
@@ -68,8 +70,35 @@ function registerEvents(client) {
 }
 
 function register(client) {
+  client.registerCommand('autogw', async (c, m, args) => {
+    gwEnabled = (args[0] || '').toLowerCase() === 'on';
+    await m.edit(codeblock('sniper · gw', kv([['status', gwEnabled ? 'enabled' : 'disabled']])));
+  }, { category: 'snipers', description: 'auto join giveaways' });
+
+  client.on('messageCreate', async (msg) => {
+    if (!gwEnabled || !client.user || msg.author.id === client.user.id) return;
+    const lower = msg.content.toLowerCase();
+    const keywords = ['giveaway', 'drop', 'nitro', 'loot', 'gift'];
+    const isGw = keywords.some(k => lower.includes(k));
+    if (!isGw) return;
+    const buttons = msg.components;
+    if (buttons && buttons.length) {
+      for (const row of buttons) {
+        for (const comp of row.components) {
+          if (comp.type === 'BUTTON' && comp.label && comp.label.toLowerCase().includes('enter')) {
+            try { await msg.clickButton(comp.customId); } catch (e) {}
+          }
+        }
+      }
+    }
+    const reactions = ['🎉', '🎁', '⚡'];
+    for (const r of reactions) {
+      if (msg.react) msg.react(r).catch(() => {});
+    }
+  });
   ensure();
   registerEvents(client);
+
 
   client.registerCommand('sniper', async (c, m) => {
     const n = getNitroCfg();

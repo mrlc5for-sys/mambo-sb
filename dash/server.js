@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const users = require('../helpers/users');
+const Database = require('../helpers/database');
+const axios = require('axios');
 
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '.env');
@@ -79,10 +81,6 @@ function findClient(clients, dashUser) {
   return clients.find(c => c.user && c.dashUser === dashUser);
 }
 
-function findClientById(clients, userId) {
-  return clients.find(c => c.user && c.user.id === userId);
-}
-
 function start(clients, hooks) {
   hooks = hooks || {};
   const port = process.env.PORT || 3000;
@@ -90,6 +88,37 @@ function start(clients, hooks) {
 
   const server = http.createServer(async (req, res) => {
     const url = req.url.split('?')[0];
+
+    if (url === '/api/auth/callback' && req.method === 'GET') {
+      const code = new URL(req.url, 'http://localhost').searchParams.get('code');
+      if (!code) return sendJson(res, 400, { error: 'No code provided' });
+      
+      try {
+        const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+          client_id: env.GATEKEEPER_ID,
+          client_secret: env.GATEKEEPER_SECRET,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: env.GATEKEEPER_REDIRECT || 'http://localhost:3000/api/auth/callback'
+        }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+
+        const userRes = await axios.get('https://discord.com/api/users/@me', {
+          headers: { Authorization: `Bearer ${tokenRes.data.access_token}` }
+        });
+
+        const userId = userRes.data.id;
+        const userDb = new Database('users.json', { users: {} });
+        const usersList = userDb.get('users', {});
+        usersList[userId] = { id: userId, username: userRes.data.username, verified: true };
+        userDb.set('users', usersList);
+
+        res.writeHead(302, { Location: '/?verified=true' });
+        res.end();
+      } catch (e) {
+        sendJson(res, 500, { error: e.message });
+      }
+      return;
+    }
 
     if (url === '/api/login' && req.method === 'POST') {
       const data = await readBody(req);
@@ -124,9 +153,7 @@ function start(clients, hooks) {
         role: s.role,
         username: s.username,
         user: {
-          id: u.id,
-          username: u.username,
-          tag: u.tag || u.username,
+          id: u.id, username: u.username, tag: u.tag || u.username,
           global_name: u.globalName || null,
           avatar: u.displayAvatarURL({ dynamic: true, size: 256 }) || 'https://cdn.discordapp.com/embed/avatars/0.png'
         },
@@ -134,6 +161,73 @@ function start(clients, hooks) {
         rpc: c.cfg.rpc || {},
         cmds: c.commands.size
       });
+      return;
+    }
+
+    if (url === '/api/hosting/clients' && req.method === 'GET') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const { getActiveTokens } = require('../helpers/clientManager');
+      const tokens = getActiveTokens(s.username);
+      sendJson(res, 200, { success: true, tokens });
+      return;
+    }
+
+    if (url === '/api/hosting/add' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const data = await readBody(req);
+      const { startClient, getActiveTokens } = require('../helpers/clientManager');
+      
+      if (s.role !== 'owner' && s.role !== 'admin') {
+        const userDb = require('../helpers/users');
+        const dbUser = userDb.find(s.username);
+        if (!dbUser) return sendJson(res, 403, { error: 'User not found' });
+        
+        const limit = dbUser.hostLimit || 0;
+        const current = getActiveTokens(s.username).length;
+        
+        if (current >= limit) {
+          return sendJson(res, 403, { error: 'Host limit reached. Please contact Admin.' });
+        }
+      }
+      
+      const COGS = [
+        require('../cogs/general'), require('../cogs/presence'), require('../cogs/rpc'),
+        require('../cogs/death'), require('../cogs/util'), require('../cogs/fun')
+      ];
+      
+      const result = await startClient(data.token, s.username, COGS);
+      sendJson(res, result.ok ? 200 : 400, result);
+      return;
+    }
+
+    if (url === '/api/hosting/remove' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const data = await readBody(req);
+      const { stopClient } = require('../helpers/clientManager');
+      const success = stopClient(data.token);
+      sendJson(res, success ? 200 : 400, { success });
+      return;
+    }
+
+    if (url === '/api/antinuke' && req.method === 'GET') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const db = new Database('antinuke.json', { states: {} });
+      const state = db.get(`states.${s.username}`, { enabled: false, whitelist: [] });
+      sendJson(res, 200, { success: true, state });
+      return;
+    }
+
+    if (url === '/api/antinuke' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const data = await readBody(req);
+      const db = new Database('antinuke.json', { states: {} });
+      db.set(`states.${s.username}`, data);
+      sendJson(res, 200, { success: true });
       return;
     }
 
@@ -145,65 +239,85 @@ function start(clients, hooks) {
       const byCategory = {};
       for (const e of c.commands.values()) {
         if (!byCategory[e.category]) byCategory[e.category] = [];
-        byCategory[e.category].push({
-          name: e.name,
-          description: e.description,
-          usage: e.usage,
-          aliases: e.aliases
-        });
+        byCategory[e.category].push({ name: e.name, description: e.description, usage: e.usage, aliases: e.aliases });
       }
       for (const k in byCategory) byCategory[k].sort((a, b) => a.name.localeCompare(b.name));
       sendJson(res, 200, { success: true, commands: byCategory, total: c.commands.size });
       return;
     }
 
-    if (url === '/api/rpc/presets' && req.method === 'GET') {
-      const rpcCog = require('../cogs/rpc');
-      const list = Object.entries(rpcCog.PRESETS).map(([key, p]) => ({
-        key, name: p.name, type: p.type, appId: p.appId
-      }));
-      sendJson(res, 200, { success: true, presets: list });
+    
+    if (url === '/api/theme' && req.method === 'GET') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const db = new Database('themes.json', { themes: {} });
+      const theme = db.get('themes.' + s.username, { color: '#8a2be2' });
+      sendJson(res, 200, { success: true, theme });
       return;
     }
 
-    if (url === '/api/rpc/apply' && req.method === 'POST') {
+    if (url === '/api/theme' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false });
+      const data = await readBody(req);
+      const db = new Database('themes.json', { themes: {} });
+      db.set('themes.' + s.username, data);
+      sendJson(res, 200, { success: true });
+      return;
+    }
+
+    if (url === '/api/logs/stream' && req.method === 'GET') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+      
+      const eventBus = require('../helpers/eventBus');
+      const onLog = (data) => {
+        res.write(`data: ${JSON.stringify(data)}
+
+`);
+      };
+      
+      eventBus.on('console.log', onLog);
+      
+      req.on('close', () => {
+        eventBus.removeListener('console.log', onLog);
+      });
+      return;
+    }
+
+    
+    if (url === '/api/rpc' && req.method === 'POST') {
       const s = getSession(req);
       if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
       const data = await readBody(req);
       if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
       const c = findClient(clients, s.username);
       if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      try {
-        const rpcCog = require('../cogs/rpc');
-        rpcCog.stopStack(c);
-        const preset = rpcCog.PRESETS[data.appKey] || rpcCog.PRESETS.spotify;
-        const r = {
-          key: data.appKey,
-          enabled: true,
-          type: data.type || preset.type || 'PLAYING',
-          name: data.name || preset.name,
-          details: data.details || '',
-          state: data.state || '',
-          largeImage: data.largeImage || (rpcCog.LOGOS && rpcCog.LOGOS[data.appKey]) || '',
-          largeText: preset.largeText || preset.name || '',
-          smallImage: '',
-          smallText: '',
-          button1Label: data.button1Label || '',
-          button1URL: data.button1URL || '',
-          button2Label: data.button2Label || '',
-          button2URL: data.button2URL || '',
-          appId: data.appId || preset.appId || '',
-          url: preset.url || '',
-          status: 'online',
-          start: Date.now()
-        };
-        c.cfg.rpc = r;
-        fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-        await rpcCog.push(c);
-        sendJson(res, 200, { success: true, rpc: r });
-      } catch (e) {
-        sendJson(res, 500, { success: false, error: e.message });
-      }
+      c.cfg.rpc = { ...c.cfg.rpc, ...data, enabled: true };
+      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
+      const rpcCog = require('../cogs/rpc');
+      await rpcCog.push(c);
+      sendJson(res, 200, { success: true });
+      return;
+    }
+
+    if (url === '/api/rpc/preset' && req.method === 'POST') {
+      const s = getSession(req);
+      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
+      const data = await readBody(req);
+      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
+      const c = findClient(clients, s.username);
+      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
+      const rpcCog = require('../cogs/rpc');
+      const preset = rpcCog.PRESETS[data.preset];
+      if (!preset) return sendJson(res, 400, { success: false, error: 'Invalid preset' });
+      c.cfg.rpc = { ...c.cfg.rpc, ...preset, enabled: true, start: Date.now() };
+      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
+      await rpcCog.push(c);
+      sendJson(res, 200, { success: true, preset });
       return;
     }
 
@@ -212,16 +326,10 @@ function start(clients, hooks) {
       if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
       const c = findClient(clients, s.username);
       if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      try {
-        const rpcCog = require('../cogs/rpc');
-        rpcCog.stopStack(c);
-        c.cfg.rpc = { enabled: false, type: 'PLAYING', name: '', details: '', state: '' };
-        fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-        try { c.user.setPresence({ activities: [], status: 'online' }); } catch (e) {}
-        sendJson(res, 200, { success: true });
-      } catch (e) {
-        sendJson(res, 500, { success: false, error: e.message });
-      }
+      c.cfg.rpc = { enabled: false, type: 'PLAYING', name: '', details: '', state: '', largeImage: '', appId: '' };
+      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
+      try { c.user.setPresence({ activities: [], status: 'online' }); } catch (e) {}
+      sendJson(res, 200, { success: true });
       return;
     }
 
@@ -260,24 +368,6 @@ function start(clients, hooks) {
       return;
     }
 
-    if (url === '/api/rpc/stack/primary/edit' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      const c = findClient(clients, s.username);
-      if (!c || !c.cfg.rpc_stack || !c.cfg.rpc_stack.primary) return sendJson(res, 404, { success: false });
-      
-      const p = c.cfg.rpc_stack.primary;
-      if (data.details !== undefined) p.details = data.details;
-      if (data.state !== undefined) p.state = data.state;
-      if (data.largeImage !== undefined) p.largeImage = data.largeImage;
-      
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      const rpcCog = require('../cogs/rpc');
-      if (c.cfg.rpc_stack.enabled) await rpcCog.pushStack(c);
-      sendJson(res, 200, { success: true });
-      return;
-    }
     if (url === '/api/rpc/stack/add' && req.method === 'POST') {
       const s = getSession(req);
       if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
@@ -316,36 +406,6 @@ function start(clients, hooks) {
       else c.cfg.rpc_stack.secondary = { emoji: data.emoji || '', text: data.text || '' };
       fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
       if (c.cfg.rpc_stack.enabled) await rpcCog.pushStack(c);
-      sendJson(res, 200, { success: true, stack: c.cfg.rpc_stack });
-      return;
-    }
-
-    if (url === '/api/rpc/stack/edit' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      if (!c.cfg.rpc_stack || !c.cfg.rpc_stack.extras) return sendJson(res, 400, { success: false, error: 'No extras' });
-      const idx = (data.index || 0) - 1;
-      if (idx < 0 || idx >= c.cfg.rpc_stack.extras.length) return sendJson(res, 400, { success: false, error: 'Invalid index' });
-      const e = c.cfg.rpc_stack.extras[idx];
-      const f = data.fields || {};
-      if (f.nameOverride !== undefined && f.nameOverride !== '') e.nameOverride = f.nameOverride;
-      if (f.nameOverride === '') delete e.nameOverride;
-      if (f.details !== undefined) e.details = f.details;
-      if (f.state !== undefined) e.state = f.state;
-      if (f.largeImage !== undefined) e.largeImage = f.largeImage;
-      if (f.button1Label !== undefined) e.button1Label = f.button1Label;
-      if (f.button1URL !== undefined) e.button1URL = f.button1URL;
-      if (f.button2Label !== undefined) e.button2Label = f.button2Label;
-      if (f.button2URL !== undefined) e.button2URL = f.button2URL;
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      if (c.cfg.rpc_stack.enabled) {
-        const rpcCog = require('../cogs/rpc');
-        if (rpcCog.pushStack) await rpcCog.pushStack(c);
-      }
       sendJson(res, 200, { success: true, stack: c.cfg.rpc_stack });
       return;
     }
@@ -411,344 +471,12 @@ function start(clients, hooks) {
       return;
     }
 
-    if (url === '/api/customstatus' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      sendJson(res, 200, { success: true, status: { emoji: c.cfg.custom_emoji || '', text: c.cfg.custom_status || '' } });
-      return;
-    }
-
-    if (url === '/api/customstatus' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      const rpcCog = require('../cogs/rpc');
-      c.cfg.custom_emoji = data.emoji || '';
-      c.cfg.custom_status = data.text || '';
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      await rpcCog.push(c);
-      sendJson(res, 200, { success: true });
-      return;
-    }
-
-    if (url === '/api/customstatus/clear' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      c.cfg.custom_emoji = '';
-      c.cfg.custom_status = '';
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      try {
-        const axios = require('axios');
-        await axios.patch('https://discord.com/api/v10/users/@me/settings', { custom_status: null }, { headers: { authorization: c.token } });
-      } catch (e) {}
-      sendJson(res, 200, { success: true });
-      return;
-    }
-
-    if (url === '/api/rotator' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      const rot = c.cfg.rotator || { interval: 15, entries: [], index: 0, enabled: false };
-      sendJson(res, 200, { success: true, rotator: rot });
-      return;
-    }
-
-    if (url === '/api/rotator/add' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      if (!c.cfg.rotator) c.cfg.rotator = { interval: 15, entries: [], index: 0, enabled: false };
-      if (!data.emoji) return sendJson(res, 400, { success: false, error: 'emoji required' });
-      c.cfg.rotator.entries.push({ emoji: data.emoji, text: data.text || '' });
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      sendJson(res, 200, { success: true, rotator: c.cfg.rotator });
-      return;
-    }
-
-    if (url === '/api/rotator/remove' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      if (!c.cfg.rotator || !c.cfg.rotator.entries) return sendJson(res, 400, { success: false, error: 'No entries' });
-      const idx = data.index - 1;
-      if (idx < 0 || idx >= c.cfg.rotator.entries.length) return sendJson(res, 400, { success: false, error: 'Invalid index' });
-      c.cfg.rotator.entries.splice(idx, 1);
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      sendJson(res, 200, { success: true, rotator: c.cfg.rotator });
-      return;
-    }
-
-    if (url === '/api/rotator/interval' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      if (!c.cfg.rotator) c.cfg.rotator = { interval: 15, entries: [], index: 0, enabled: false };
-      const n = Math.max(5, parseInt(data.interval, 10) || 15);
-      c.cfg.rotator.interval = n;
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      if (c.cfg.rotator.enabled) {
-        const rpcCog = require('../cogs/rpc');
-        if (rpcCog.startRotator) rpcCog.startRotator(c);
-      }
-      sendJson(res, 200, { success: true, interval: n });
-      return;
-    }
-
-    if (url === '/api/rotator/start' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      const rpcCog = require('../cogs/rpc');
-      if (!c.cfg.rotator || !c.cfg.rotator.entries || !c.cfg.rotator.entries.length) return sendJson(res, 400, { success: false, error: 'No entries' });
-      c.cfg.rotator.enabled = true;
-      c.cfg.rotator.index = 0;
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      if (rpcCog.startRotator) rpcCog.startRotator(c);
-      sendJson(res, 200, { success: true });
-      return;
-    }
-
-    if (url === '/api/rotator/stop' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      if (!c.cfg.rotator) c.cfg.rotator = { interval: 15, entries: [], index: 0, enabled: false };
-      c.cfg.rotator.enabled = false;
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      const rpcCog = require('../cogs/rpc');
-      if (rpcCog.stopRotator) rpcCog.stopRotator(c);
-      sendJson(res, 200, { success: true });
-      return;
-    }
-
-    if (url === '/api/rotator/clear' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      c.cfg.rotator = { interval: 15, entries: [], index: 0, enabled: false };
-      fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(c.cfg, null, 2));
-      const rpcCog = require('../cogs/rpc');
-      if (rpcCog.stopRotator) rpcCog.stopRotator(c);
-      sendJson(res, 200, { success: true });
-      return;
-    }
-
-    if (url === '/api/voice/guilds' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c || !c.user) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      const guilds = c.guilds.cache.map(g => ({ id: g.id, name: g.name, icon: g.iconURL({ dynamic: true }) || null }));
-      sendJson(res, 200, { success: true, guilds });
-      return;
-    }
-
-    if (url.startsWith('/api/voice/channels/') && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c || !c.user) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      const guildId = url.split('/').pop();
-      const guild = c.guilds.cache.get(guildId);
-      if (!guild) return sendJson(res, 404, { success: false, error: 'Guild not found' });
-      const channels = guild.channels.cache.filter(ch => ch.type === 'GUILD_VOICE' || ch.type === 'GUILD_STAGE_VOICE').map(ch => ({ id: ch.id, name: ch.name }));
-      sendJson(res, 200, { success: true, channels });
-      return;
-    }
-
-    if (url === '/api/voice/join' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const c = findClient(clients, s.username);
-      if (!c || !c.user) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      try {
-        c._vcChannel = data.channelId;
-        c._vcGuild = data.guildId;
-        const shard = c.ws.shards.first();
-        if (shard) shard.send({ op: 4, d: { guild_id: data.guildId, channel_id: data.channelId, self_mute: false, self_deaf: false } });
-        sendJson(res, 200, { success: true });
-      } catch (e) { sendJson(res, 500, { success: false, error: e.message }); }
-      return;
-    }
-
-    if (url === '/api/voice/leave' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c || !c.user) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      try {
-        const shard = c.ws.shards.first();
-        if (shard && c._vcGuild) shard.send({ op: 4, d: { guild_id: c._vcGuild, channel_id: null, self_mute: false, self_deaf: false } });
-        c._vcChannel = null;
-        c._vcGuild = null;
-        sendJson(res, 200, { success: true });
-      } catch (e) { sendJson(res, 500, { success: false, error: e.message }); }
-      return;
-    }
-
-    if (url === '/api/voice/status' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s) return sendJson(res, 401, { success: false, error: 'Not logged in' });
-      const c = findClient(clients, s.username);
-      if (!c || !c.user) return sendJson(res, 404, { success: false, error: 'Client not found' });
-      sendJson(res, 200, { success: true, connected: !!(c._vcGuild && c._vcChannel), guildId: c._vcGuild || null, channelId: c._vcChannel || null });
-      return;
-    }
-
-    if (url === '/api/files' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false });
-      const root = path.join(__dirname, '..');
-      const files = [];
-      if (fs.existsSync(path.join(root, 'proxies.txt'))) files.push('proxies.txt');
-      if (fs.existsSync(path.join(root, 'tokens.txt'))) files.push('tokens.txt');
-      if (fs.existsSync(path.join(root, 'data'))) {
-        fs.readdirSync(path.join(root, 'data')).forEach(f => {
-          if (f.endsWith('.txt')) files.push('data/' + f);
-        });
-      }
-      sendJson(res, 200, { success: true, files });
-      return;
-    }
-
-    if (url === '/api/files/read' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false });
-      const data = await readBody(req);
-      const root = path.join(__dirname, '..');
-      const target = path.join(root, data.file);
-      if (!target.startsWith(root)) return sendJson(res, 403, { success: false });
-      if (!fs.existsSync(target)) return sendJson(res, 404, { success: false });
-      const content = fs.readFileSync(target, 'utf8');
-      sendJson(res, 200, { success: true, content });
-      return;
-    }
-
-    if (url === '/api/files/write' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false });
-      const data = await readBody(req);
-      const root = path.join(__dirname, '..');
-      const target = path.join(root, data.file);
-      if (!target.startsWith(root)) return sendJson(res, 403, { success: false });
-      fs.writeFileSync(target, data.content);
-      sendJson(res, 200, { success: true });
-      return;
-    }
-    if (url === '/api/users' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false, error: 'Insufficient role' });
-      const list = users.all().map(u => {
-        const c = findClient(clients, u.username);
-        return {
-          id: u.id,
-          username: u.username,
-          role: u.role || 'user',
-          created: u.created,
-          online: !!c,
-          tag: c && c.user ? c.user.tag : null,
-          hasToken: !!u.token
-        };
-      });
-      sendJson(res, 200, { success: true, users: list });
-      return;
-    }
-
-    if (url === '/api/users' && req.method === 'POST') {
-      const s = getSession(req);
-      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false, error: 'Insufficient role' });
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      if (data.role === 'owner' && s.role !== 'owner') {
-        return sendJson(res, 403, { success: false, error: 'Only owner can create owners' });
-      }
-      const result = users.add({
-        username: data.username,
-        password: data.password,
-        token: data.token,
-        role: data.role || 'user'
-      });
-      if (!result.ok) return sendJson(res, 400, { success: false, error: result.reason });
-      if (hooks.addUser && result.user.token) {
-        try { await hooks.addUser(result.user); } catch (e) {}
-      }
-      sendJson(res, 200, { success: true, user: { id: result.user.id, username: result.user.username, role: result.user.role } });
-      return;
-    }
-
-    if (url.startsWith('/api/users/') && req.method === 'PATCH') {
-      const s = getSession(req);
-      if (!s || s.role !== 'owner') return sendJson(res, 403, { success: false, error: 'Owner only' });
-      const id = url.split('/').pop();
-      const data = await readBody(req);
-      if (!data) return sendJson(res, 400, { success: false, error: 'Bad body' });
-      const result = users.update(id, data);
-      if (!result.ok) return sendJson(res, 400, { success: false, error: result.reason });
-      sendJson(res, 200, { success: true, user: { id: result.user.id, username: result.user.username, role: result.user.role } });
-      return;
-    }
-
-    if (url.startsWith('/api/users/') && req.method === 'DELETE') {
-      const s = getSession(req);
-      if (!s || s.role !== 'owner') return sendJson(res, 403, { success: false, error: 'Owner only' });
-      const id = url.split('/').pop();
-      const result = users.remove(id);
-      if (!result.ok) return sendJson(res, 400, { success: false, error: result.reason });
-      const c = findClient(clients, result.user.username);
-      if (c) {
-        try { c.destroy(); } catch (e) {}
-        const idx = clients.indexOf(c);
-        if (idx !== -1) clients.splice(idx, 1);
-      }
-      sendJson(res, 200, { success: true });
-      return;
-    }
-
-    if (url === '/api/clients' && req.method === 'GET') {
-      const s = getSession(req);
-      if (!s || (s.role !== 'owner' && s.role !== 'admin')) return sendJson(res, 403, { success: false, error: 'Insufficient role' });
-      const list = clients.map(c => ({
-        dashUser: c.dashUser,
-        role: c.dashRole,
-        online: !!c.user,
-        tag: c.user ? c.user.tag : null,
-        id: c.user ? c.user.id : null,
-        uid: c.uid
-      }));
-      sendJson(res, 200, { success: true, clients: list });
-      return;
-    }
-
-    const ext = path.extname(url);
+const ext = path.extname(url);
     let contentType = 'text/html';
     if (ext === '.png') contentType = 'image/png';
     else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
     else if (ext === '.css') contentType = 'text/css';
     else if (ext === '.js') contentType = 'application/javascript';
-    else if (ext === '.svg') contentType = 'image/svg+xml';
 
     if (ext && ext !== '.html') {
       fs.readFile(path.join(publicDir, url), (err, data) => {

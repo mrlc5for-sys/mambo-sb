@@ -10,6 +10,23 @@ function sendVoiceState(client, guildId, channelId, selfMute, selfDeaf) {
   return true;
 }
 
+
+  function startVoiceHeartbeat(c) {
+    if (c._voiceInterval) clearInterval(c._voiceInterval);
+    c._voiceInterval = setInterval(() => {
+      if (c._vcGuild && c._vcChannel) {
+        const guild = c.guilds.cache.get(c._vcGuild);
+        const member = guild ? guild.members.cache.get(c.user.id) : null;
+        if (!member || !member.voice.channelId) {
+          sendVoiceState(c, c._vcGuild, c._vcChannel, false, false);
+        }
+      } else {
+        clearInterval(c._voiceInterval);
+      }
+    }, 15000);
+  }
+
+
 function register(client) {
   client.registerCommand('vc', async (c, m) => {
     await m.edit(codeblock('voice', [
@@ -35,6 +52,7 @@ function register(client) {
     c._vcChannel = chan.id;
     c._vcGuild = guild.id;
     sendVoiceState(c, guild.id, chan.id, false, false);
+    startVoiceHeartbeat(c);
     await m.edit(codeblock('vc · joined', kv([['channel', chan.name], ['guild', guild.name]])));
   }, { aliases: ['vcjoin'], category: 'voice', description: 'join voice channel' });
 
